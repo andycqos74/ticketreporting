@@ -1,0 +1,38 @@
+# ---- Build output ----
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+*.dll
+*.pdb
+*.exe
+*.cache
+
+# Keep third-party runtime assemblies that must ship in bin/ if you choose to
+# track them, by force-adding them:  git add -f bin/MySql.Data.dll
+# (By default bin/ is ignored above so build output stops getting committed.)
+
+# ---- NuGet ----
+packages/
+*.nupkg
+
+# ---- Visual Studio ----
+.vs/
+*.user
+*.suo
+*.userprefs
+_ReSharper*/
+*.[Rr]e[Ss]harper
+
+# ---- Publish output ----
+[Pp]ublish/
+*.Publish.xml
+PublishProfiles/*.pubxml.user
+
+# ---- Local secrets (see REVIEW.md) ----
+secrets.config
+appsettings.local.config
+
+# ---- OS noise ----
+Thumbs.db
+.DS_Store
