@@ -53,7 +53,8 @@ Public Class ChatHubticketco
         Return New With {
             .running = TicketcoPoller.IsRunning,
             .eventId = TicketcoPoller.ActiveEventId,
-            .intervalSeconds = TicketcoPoller.IntervalSeconds
+            .intervalSeconds = TicketcoPoller.IntervalSeconds,
+            .auto = TicketcoPoller.IsAuto
         }
     End Function
 
@@ -317,10 +318,18 @@ Public NotInheritable Class TicketcoImporter
             Case "3299872" : checkedInTurnstile = "turnstileE4"
         End Select
 
+        ' Upsert into the LIVE table the dashboard view reads. Keyed on
+        ' (fixtureid, TicketCoRef) so re-polls update a ticket in place and rows
+        ' from different fixtures never collide (see migration.sql for the key).
         Const sql As String =
-            "REPLACE INTO ticketco_matchsales " &
+            "INSERT INTO ticketco_matchsales_live " &
             "(PurchaseDate, TicketCoRef, GroundArea, TicketType, EventName, QtySold, QtyCheckedIn, CheckedInDate, CheckedInOperator, ticketcotickettype, fixtureid) " &
-            "VALUES (@PurchaseDate, @TicketCoRef, @GroundArea, @TicketType, @EventName, 1, @QtyCheckedIn, @CheckedInDate, @CheckedInOperator, @ticketcotickettype, @fixtureid)"
+            "VALUES (@PurchaseDate, @TicketCoRef, @GroundArea, @TicketType, @EventName, 1, @QtyCheckedIn, @CheckedInDate, @CheckedInOperator, @ticketcotickettype, @fixtureid) " &
+            "ON DUPLICATE KEY UPDATE " &
+            "PurchaseDate=VALUES(PurchaseDate), GroundArea=VALUES(GroundArea), TicketType=VALUES(TicketType), " &
+            "EventName=VALUES(EventName), QtySold=VALUES(QtySold), QtyCheckedIn=VALUES(QtyCheckedIn), " &
+            "CheckedInDate=VALUES(CheckedInDate), CheckedInOperator=VALUES(CheckedInOperator), " &
+            "ticketcotickettype=VALUES(ticketcotickettype)"
 
         Using cmd As New MySqlCommand(sql, con)
             cmd.Parameters.AddWithValue("@PurchaseDate", NullIfEmpty(transactionDatestamp))
@@ -334,6 +343,40 @@ Public NotInheritable Class TicketcoImporter
             cmd.Parameters.AddWithValue("@ticketcotickettype", itemTypeType)
             cmd.Parameters.AddWithValue("@fixtureid", fixtureid)
             cmd.ExecuteNonQuery()
+        End Using
+    End Sub
+
+    ''' <summary>
+    ''' The TicketCo event id of the next home match, from
+    ''' qosfclivecopy.vw_nexthomematch (its ticketcoid column). Empty if none.
+    ''' </summary>
+    Public Shared Function GetCurrentFixtureId() As String
+        Dim constr As String = ConfigurationManager.ConnectionStrings("QosTickets").ConnectionString
+        Using con As New MySqlConnection(constr)
+            con.Open()
+            Using cmd As New MySqlCommand("SELECT ticketcoid FROM qosfclivecopy.vw_nexthomematch LIMIT 1", con)
+                Dim o As Object = cmd.ExecuteScalar()
+                If o Is Nothing OrElse o Is DBNull.Value Then Return ""
+                Return o.ToString()
+            End Using
+        End Using
+    End Function
+
+    ''' <summary>
+    ''' Record the fixture the dashboard should display, in the single-row
+    ''' dashboard_current_fixture table that vw_ticketsalesreport filters by.
+    ''' Keeps the view in step with whatever the poller is importing.
+    ''' </summary>
+    Public Shared Sub SetCurrentFixture(ByVal fixtureid As String)
+        Dim constr As String = ConfigurationManager.ConnectionStrings("QosTickets").ConnectionString
+        Using con As New MySqlConnection(constr)
+            con.Open()
+            Using cmd As New MySqlCommand(
+                "INSERT INTO dashboard_current_fixture (id, fixtureid) VALUES (1, @f) " &
+                "ON DUPLICATE KEY UPDATE fixtureid = @f", con)
+                cmd.Parameters.AddWithValue("@f", If(String.IsNullOrEmpty(fixtureid), CObj(DBNull.Value), fixtureid))
+                cmd.ExecuteNonQuery()
+            End Using
         End Using
     End Sub
 
@@ -371,13 +414,14 @@ Public NotInheritable Class TicketcoPoller
 
     Private Shared ReadOnly SyncRoot As New Object()
     Private Shared _timer As Timer
-    Private Shared _eventId As String = ""
+    Private Shared _eventId As String = ""             ' last resolved/polled fixture
+    Private Shared _manualEventId As String = ""       ' "" = auto (next home match)
     Private Shared _intervalSeconds As Integer = 0
     Private Shared _running As Integer = 0            ' 0 = idle, 1 = a tick is in progress
     Public Shared Property LastError As String = ""
     Public Shared Property LastRunUtc As DateTime = DateTime.MinValue
 
-    ''' <summary>The fixture currently being polled (falls back to config default).</summary>
+    ''' <summary>The fixture most recently resolved/polled (config default before the first tick).</summary>
     Public Shared ReadOnly Property ActiveEventId As String
         Get
             If Not String.IsNullOrEmpty(_eventId) Then
@@ -390,6 +434,28 @@ Public NotInheritable Class TicketcoPoller
             Return "924084"
         End Get
     End Property
+
+    ''' <summary>True when the fixture is auto-picked from vw_nexthomematch (no manual override).</summary>
+    Public Shared ReadOnly Property IsAuto As Boolean
+        Get
+            Return String.IsNullOrEmpty(_manualEventId)
+        End Get
+    End Property
+
+    ' Decide which fixture to poll/display: an explicit manual override wins;
+    ' otherwise the next home match; otherwise the Web.config fallback.
+    Private Shared Function ResolveFixture() As String
+        If Not String.IsNullOrEmpty(_manualEventId) Then Return _manualEventId
+        Try
+            Dim f As String = TicketcoImporter.GetCurrentFixtureId()
+            If Not String.IsNullOrEmpty(f) Then Return f
+        Catch
+            ' fall through to the configured default
+        End Try
+        Dim cfg As String = ConfigurationManager.AppSettings("TicketcoActiveEventId")
+        If Not String.IsNullOrEmpty(cfg) Then Return cfg
+        Return "924084"
+    End Function
 
     ''' <summary>True while the poll timer is armed.</summary>
     Public Shared ReadOnly Property IsRunning As Boolean
@@ -405,13 +471,14 @@ Public NotInheritable Class TicketcoPoller
         End Get
     End Property
 
-    ''' <summary>Start (or retarget) the poll loop.</summary>
+    ''' <summary>
+    ''' Start (or retarget) the poll loop. Pass an empty eventid for auto mode
+    ''' (poll the next home match); pass a fixture id to force a manual override.
+    ''' </summary>
     Public Shared Sub Start(ByVal eventid As String, ByVal intervalSeconds As Integer)
         If intervalSeconds < 5 Then intervalSeconds = 5   ' don't hammer the API
         SyncLock SyncRoot
-            If Not String.IsNullOrEmpty(eventid) Then
-                _eventId = eventid
-            End If
+            _manualEventId = If(eventid, "").Trim()
             _intervalSeconds = intervalSeconds
             If _timer Is Nothing Then
                 _timer = New Timer(AddressOf TimerCallback, Nothing, 0, intervalSeconds * 1000)
@@ -440,12 +507,12 @@ Public NotInheritable Class TicketcoPoller
         Boolean.TryParse(ConfigurationManager.AppSettings("TicketcoAutoStart"), autoStart)
         If Not autoStart Then Return
 
-        Dim eventid As String = ConfigurationManager.AppSettings("TicketcoActiveEventId")
         Dim seconds As Integer
         If Not Integer.TryParse(ConfigurationManager.AppSettings("TicketcoPollSeconds"), seconds) Then
             seconds = 30
         End If
-        Start(eventid, seconds)
+        ' Empty fixture => auto mode (poll the next home match).
+        Start("", seconds)
     End Sub
 
     Private Shared Sub TimerCallback(ByVal state As Object)
@@ -462,8 +529,12 @@ Public NotInheritable Class TicketcoPoller
 
     ' The single place where import and push happen together, in order.
     Private Shared Sub Tick()
-        Dim eventid As String = ActiveEventId
+        Dim eventid As String = ResolveFixture()
+        _eventId = eventid
         Try
+            ' Point the dashboard view at this fixture first, so even if the API
+            ' call fails the view still shows the right (current) match.
+            TicketcoImporter.SetCurrentFixture(eventid)
             TicketcoImporter.FetchAndStore(eventid)
             LastError = ""
         Catch ex As Exception

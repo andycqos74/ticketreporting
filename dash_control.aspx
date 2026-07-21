@@ -55,8 +55,8 @@
             <div class="row pt-4">
                 <div class="col-12">
                     <div class="form-group">
-                        <label for="fixtureid">Enter Fixture ID</label>
-                        <input id="fixtureid" class="form-control" type="text" placeholder="Fixture ID" />
+                        <label for="fixtureid">Fixture ID (leave blank for auto &ndash; next home match)</label>
+                        <input id="fixtureid" class="form-control" type="text" placeholder="Blank = auto (next home match)" />
 
                     </div>
 
@@ -81,6 +81,7 @@
                                 State:
                                 <span id="statusState" class="badge badge-secondary">Unknown</span>
                             </p>
+                            <p class="mb-2">Mode: <strong id="statusMode">-</strong></p>
                             <p class="mb-2">Current fixture ID: <strong id="statusFixture">-</strong></p>
                             <p class="mb-0">Current refresh interval: <strong id="statusInterval">-</strong> secs</p>
                         </div>
@@ -225,6 +226,7 @@
                             $("#statusState").text("Stopped")
                                 .removeClass("badge-secondary badge-success").addClass("badge-danger");
                         }
+                        $("#statusMode").text(s.auto ? "Auto (next home match)" : "Manual override");
                         $("#statusFixture").text(s.eventId);
                         $("#statusInterval").text(s.intervalSeconds);
                     });
@@ -237,17 +239,14 @@
                 event.preventDefault();
                 event.stopImmediatePropagation();
 
-                var fixtureId = $.trim($("#fixtureid").val());
+                var fixtureId = $.trim($("#fixtureid").val());   // blank = auto (next home match)
                 var interval = parseInt($("#updateInterval").val(), 10) || 30;
-
-                if (!fixtureId) {
-                    $("#log").text("Enter a Fixture ID first.");
-                    return;
-                }
 
                 chat.server.startPolling(fixtureId, interval)
                     .done(function () {
-                        $("#log").text("Server polling started for fixture " + fixtureId + " every " + interval + "s.");
+                        $("#log").text(fixtureId
+                            ? ("Server polling started for fixture " + fixtureId + " every " + interval + "s.")
+                            : ("Server polling started in AUTO mode (next home match) every " + interval + "s."));
                         refreshStatus();
                     })
                     .fail(function (e) { $("#log").text("Start failed: " + e); });
