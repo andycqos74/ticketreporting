@@ -11,7 +11,7 @@ Option Strict On
 Option Explicit On
 
 
-Partial Public Class printtickets
+Partial Public Class terrace
 
     '''<summary>
     '''form1 control.
@@ -38,12 +38,140 @@ Partial Public Class printtickets
     Protected WithEvents ScriptManager1 As Global.System.Web.UI.ScriptManager
 
     '''<summary>
-    '''Button2 control.
+    '''fixturetitle control.
     '''</summary>
     '''<remarks>
     '''Auto-generated field.
     '''</remarks>
-    Protected WithEvents Button2 As Global.System.Web.UI.WebControls.Button
+    Protected WithEvents fixturetitle As Global.System.Web.UI.HtmlControls.HtmlGenericControl
+
+    '''<summary>
+    '''UpdatePanel1 control.
+    '''</summary>
+    '''<remarks>
+    '''Auto-generated field.
+    '''</remarks>
+    Protected WithEvents UpdatePanel1 As Global.System.Web.UI.UpdatePanel
+
+    '''<summary>
+    '''Panel2 control.
+    '''</summary>
+    '''<remarks>
+    '''Auto-generated field.
+    '''</remarks>
+    Protected WithEvents Panel2 As Global.System.Web.UI.WebControls.Panel
+
+    '''<summary>
+    '''NewtxtName control.
+    '''</summary>
+    '''<remarks>
+    '''Auto-generated field.
+    '''</remarks>
+    Protected WithEvents NewtxtName As Global.System.Web.UI.HtmlControls.HtmlInputText
+
+    '''<summary>
+    '''NewtxtEmail control.
+    '''</summary>
+    '''<remarks>
+    '''Auto-generated field.
+    '''</remarks>
+    Protected WithEvents NewtxtEmail As Global.System.Web.UI.HtmlControls.HtmlInputText
+
+    '''<summary>
+    '''NewtxtDOB control.
+    '''</summary>
+    '''<remarks>
+    '''Auto-generated field.
+    '''</remarks>
+    Protected WithEvents NewtxtDOB As Global.System.Web.UI.HtmlControls.HtmlInputText
+
+    '''<summary>
+    '''NewtxtAddress control.
+    '''</summary>
+    '''<remarks>
+    '''Auto-generated field.
+    '''</remarks>
+    Protected WithEvents NewtxtAddress As Global.System.Web.UI.HtmlControls.HtmlInputText
+
+    '''<summary>
+    '''NewtxtPostcode control.
+    '''</summary>
+    '''<remarks>
+    '''Auto-generated field.
+    '''</remarks>
+    Protected WithEvents NewtxtPostcode As Global.System.Web.UI.HtmlControls.HtmlInputText
+
+    '''<summary>
+    '''DDnewType control.
+    '''</summary>
+    '''<remarks>
+    '''Auto-generated field.
+    '''</remarks>
+    Protected WithEvents DDnewType As Global.System.Web.UI.WebControls.DropDownList
+
+    '''<summary>
+    '''DDnewStatus control.
+    '''</summary>
+    '''<remarks>
+    '''Auto-generated field.
+    '''</remarks>
+    Protected WithEvents DDnewStatus As Global.System.Web.UI.WebControls.DropDownList
+
+    '''<summary>
+    '''BnewSave control.
+    '''</summary>
+    '''<remarks>
+    '''Auto-generated field.
+    '''</remarks>
+    Protected WithEvents BnewSave As Global.System.Web.UI.WebControls.Button
+
+    '''<summary>
+    '''Panel1 control.
+    '''</summary>
+    '''<remarks>
+    '''Auto-generated field.
+    '''</remarks>
+    Protected WithEvents Panel1 As Global.System.Web.UI.WebControls.Panel
+
+    '''<summary>
+    '''txtSearchTerm control.
+    '''</summary>
+    '''<remarks>
+    '''Auto-generated field.
+    '''</remarks>
+    Protected WithEvents txtSearchTerm As Global.System.Web.UI.WebControls.TextBox
+
+    '''<summary>
+    '''BSearch control.
+    '''</summary>
+    '''<remarks>
+    '''Auto-generated field.
+    '''</remarks>
+    Protected WithEvents BSearch As Global.System.Web.UI.WebControls.Button
+
+    '''<summary>
+    '''btnSearchall control.
+    '''</summary>
+    '''<remarks>
+    '''Auto-generated field.
+    '''</remarks>
+    Protected WithEvents btnSearchall As Global.System.Web.UI.WebControls.Button
+
+    '''<summary>
+    '''LBTotalrecordcount control.
+    '''</summary>
+    '''<remarks>
+    '''Auto-generated field.
+    '''</remarks>
+    Protected WithEvents LBTotalrecordcount As Global.System.Web.UI.WebControls.Label
+
+    '''<summary>
+    '''LBSearchrecordcount control.
+    '''</summary>
+    '''<remarks>
+    '''Auto-generated field.
+    '''</remarks>
+    Protected WithEvents LBSearchrecordcount As Global.System.Web.UI.WebControls.Label
 
     '''<summary>
     '''GridView1 control.
@@ -54,20 +182,12 @@ Partial Public Class printtickets
     Protected WithEvents GridView1 As Global.System.Web.UI.WebControls.GridView
 
     '''<summary>
-    '''LBImportID control.
+    '''LBSaleID control.
     '''</summary>
     '''<remarks>
     '''Auto-generated field.
     '''</remarks>
-    Protected WithEvents LBImportID As Global.System.Web.UI.WebControls.Label
-
-    '''<summary>
-    '''LBPurchaseDate control.
-    '''</summary>
-    '''<remarks>
-    '''Auto-generated field.
-    '''</remarks>
-    Protected WithEvents LBPurchaseDate As Global.System.Web.UI.WebControls.Label
+    Protected WithEvents LBSaleID As Global.System.Web.UI.WebControls.Label
 
     '''<summary>
     '''LBTicketID control.
@@ -102,12 +222,12 @@ Partial Public Class printtickets
     Protected WithEvents requiredname As Global.System.Web.UI.WebControls.RequiredFieldValidator
 
     '''<summary>
-    '''LBLName control.
+    '''LBemail control.
     '''</summary>
     '''<remarks>
     '''Auto-generated field.
     '''</remarks>
-    Protected WithEvents LBLName As Global.System.Web.UI.WebControls.Label
+    Protected WithEvents LBemail As Global.System.Web.UI.WebControls.Label
 
     '''<summary>
     '''txtemail control.
@@ -118,28 +238,28 @@ Partial Public Class printtickets
     Protected WithEvents txtemail As Global.System.Web.UI.WebControls.TextBox
 
     '''<summary>
-    '''LBPrintName control.
+    '''LBDOB control.
     '''</summary>
     '''<remarks>
     '''Auto-generated field.
     '''</remarks>
-    Protected WithEvents LBPrintName As Global.System.Web.UI.WebControls.Label
+    Protected WithEvents LBDOB As Global.System.Web.UI.WebControls.Label
 
     '''<summary>
-    '''txtprintname control.
+    '''txtDOB control.
     '''</summary>
     '''<remarks>
     '''Auto-generated field.
     '''</remarks>
-    Protected WithEvents txtprintname As Global.System.Web.UI.WebControls.TextBox
+    Protected WithEvents txtDOB As Global.System.Web.UI.WebControls.TextBox
 
     '''<summary>
-    '''LBTicketType control.
+    '''LBaddress control.
     '''</summary>
     '''<remarks>
     '''Auto-generated field.
     '''</remarks>
-    Protected WithEvents LBTicketType As Global.System.Web.UI.WebControls.Label
+    Protected WithEvents LBaddress As Global.System.Web.UI.WebControls.Label
 
     '''<summary>
     '''txtaddress control.
@@ -158,28 +278,12 @@ Partial Public Class printtickets
     Protected WithEvents requiredaddress As Global.System.Web.UI.WebControls.RequiredFieldValidator
 
     '''<summary>
-    '''LBArea control.
+    '''LBpostcode control.
     '''</summary>
     '''<remarks>
     '''Auto-generated field.
     '''</remarks>
-    Protected WithEvents LBArea As Global.System.Web.UI.WebControls.Label
-
-    '''<summary>
-    '''txtDOB control.
-    '''</summary>
-    '''<remarks>
-    '''Auto-generated field.
-    '''</remarks>
-    Protected WithEvents txtDOB As Global.System.Web.UI.WebControls.TextBox
-
-    '''<summary>
-    '''LBrow control.
-    '''</summary>
-    '''<remarks>
-    '''Auto-generated field.
-    '''</remarks>
-    Protected WithEvents LBrow As Global.System.Web.UI.WebControls.Label
+    Protected WithEvents LBpostcode As Global.System.Web.UI.WebControls.Label
 
     '''<summary>
     '''txtpostcode control.
@@ -190,20 +294,12 @@ Partial Public Class printtickets
     Protected WithEvents txtpostcode As Global.System.Web.UI.WebControls.TextBox
 
     '''<summary>
-    '''LBnumber control.
+    '''LBType control.
     '''</summary>
     '''<remarks>
     '''Auto-generated field.
     '''</remarks>
-    Protected WithEvents LBnumber As Global.System.Web.UI.WebControls.Label
-
-    '''<summary>
-    '''LBQRCode control.
-    '''</summary>
-    '''<remarks>
-    '''Auto-generated field.
-    '''</remarks>
-    Protected WithEvents LBQRCode As Global.System.Web.UI.WebControls.Label
+    Protected WithEvents LBType As Global.System.Web.UI.WebControls.Label
 
     '''<summary>
     '''DDType control.
@@ -222,12 +318,12 @@ Partial Public Class printtickets
     Protected WithEvents requiredDDL As Global.System.Web.UI.WebControls.RequiredFieldValidator
 
     '''<summary>
-    '''Button1 control.
+    '''LBStatus control.
     '''</summary>
     '''<remarks>
     '''Auto-generated field.
     '''</remarks>
-    Protected WithEvents Button1 As Global.System.Web.UI.WebControls.Button
+    Protected WithEvents LBStatus As Global.System.Web.UI.WebControls.Label
 
     '''<summary>
     '''DDStatus control.
@@ -268,13 +364,5 @@ Partial Public Class printtickets
     '''Auto-generated field.
     '''</remarks>
     Protected WithEvents Footer1 As Global.admintickets.UC_footer
-
-    '''<summary>
-    '''Panel1 control.
-    '''</summary>
-    '''<remarks>
-    '''Auto-generated field.
-    '''</remarks>
-    Protected WithEvents Panel1 As Global.System.Web.UI.WebControls.Panel
 
 End Class

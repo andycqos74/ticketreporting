@@ -11,7 +11,7 @@ Option Strict On
 Option Explicit On
 
 
-Partial Public Class Admin_walkup
+Partial Public Class headerless_update
 
     '''<summary>
     '''form1 control.

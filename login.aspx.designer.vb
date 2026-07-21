@@ -11,46 +11,46 @@ Option Strict On
 Option Explicit On
 
 
-Partial Public Class WebForm1_excel
+Partial Public Class login
 
     '''<summary>
-    '''form1 control.
+    '''UPanel1 control.
     '''</summary>
     '''<remarks>
     '''Auto-generated field.
     '''</remarks>
-    Protected WithEvents form1 As Global.System.Web.UI.HtmlControls.HtmlForm
+    Protected WithEvents UPanel1 As Global.System.Web.UI.UpdatePanel
 
     '''<summary>
-    '''LabelStatus control.
+    '''inputuser control.
     '''</summary>
     '''<remarks>
     '''Auto-generated field.
     '''</remarks>
-    Protected WithEvents LabelStatus As Global.System.Web.UI.WebControls.Label
+    Protected WithEvents inputuser As Global.System.Web.UI.WebControls.TextBox
 
     '''<summary>
-    '''FileUpload1 control.
+    '''inputPassword control.
     '''</summary>
     '''<remarks>
     '''Auto-generated field.
     '''</remarks>
-    Protected WithEvents FileUpload1 As Global.System.Web.UI.WebControls.FileUpload
+    Protected WithEvents inputPassword As Global.System.Web.UI.WebControls.TextBox
 
     '''<summary>
-    '''btnImport control.
+    '''LBError control.
     '''</summary>
     '''<remarks>
     '''Auto-generated field.
     '''</remarks>
-    Protected WithEvents btnImport As Global.System.Web.UI.WebControls.Button
+    Protected WithEvents LBError As Global.System.Web.UI.WebControls.Label
 
     '''<summary>
-    '''GridView1 control.
+    '''BSignin control.
     '''</summary>
     '''<remarks>
     '''Auto-generated field.
     '''</remarks>
-    Protected WithEvents GridView1 As Global.System.Web.UI.WebControls.GridView
+    Protected WithEvents BSignin As Global.System.Web.UI.WebControls.Button
 
 End Class

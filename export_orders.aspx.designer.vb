@@ -11,14 +11,30 @@ Option Strict On
 Option Explicit On
 
 
-Partial Public Class Admin_walkup
+Partial Public Class export_orders
 
     '''<summary>
-    '''form1 control.
+    '''form2 control.
     '''</summary>
     '''<remarks>
     '''Auto-generated field.
     '''</remarks>
-    Protected WithEvents form1 As Global.System.Web.UI.HtmlControls.HtmlForm
+    Protected WithEvents form2 As Global.System.Web.UI.HtmlControls.HtmlForm
+
+    '''<summary>
+    '''btntoCsv control.
+    '''</summary>
+    '''<remarks>
+    '''Auto-generated field.
+    '''</remarks>
+    Protected WithEvents btntoCsv As Global.System.Web.UI.WebControls.Button
+
+    '''<summary>
+    '''GridView1 control.
+    '''</summary>
+    '''<remarks>
+    '''Auto-generated field.
+    '''</remarks>
+    Protected WithEvents GridView1 As Global.System.Web.UI.WebControls.GridView
 
 End Class

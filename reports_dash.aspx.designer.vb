@@ -11,7 +11,7 @@ Option Strict On
 Option Explicit On
 
 
-Partial Public Class Admin_walkup
+Partial Public Class reports_dash
 
     '''<summary>
     '''form1 control.
@@ -20,5 +20,21 @@ Partial Public Class Admin_walkup
     '''Auto-generated field.
     '''</remarks>
     Protected WithEvents form1 As Global.System.Web.UI.HtmlControls.HtmlForm
+
+    '''<summary>
+    '''UCHeader control.
+    '''</summary>
+    '''<remarks>
+    '''Auto-generated field.
+    '''</remarks>
+    Protected WithEvents UCHeader As Global.admintickets.UC_header
+
+    '''<summary>
+    '''Footer1 control.
+    '''</summary>
+    '''<remarks>
+    '''Auto-generated field.
+    '''</remarks>
+    Protected WithEvents Footer1 As Global.admintickets.UC_footer
 
 End Class

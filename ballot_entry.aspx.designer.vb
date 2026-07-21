@@ -11,7 +11,7 @@ Option Strict On
 Option Explicit On
 
 
-Partial Public Class WebForm1
+Partial Public Class ballot_entry
 
     '''<summary>
     '''form1 control.
@@ -22,59 +22,43 @@ Partial Public Class WebForm1
     Protected WithEvents form1 As Global.System.Web.UI.HtmlControls.HtmlForm
 
     '''<summary>
-    '''FileUpload1 control.
+    '''DDcardtype control.
     '''</summary>
     '''<remarks>
     '''Auto-generated field.
     '''</remarks>
-    Protected WithEvents FileUpload1 As Global.System.Web.UI.WebControls.FileUpload
+    Protected WithEvents DDcardtype As Global.System.Web.UI.WebControls.DropDownList
 
     '''<summary>
-    '''button1 control.
+    '''DDarea control.
     '''</summary>
     '''<remarks>
     '''Auto-generated field.
     '''</remarks>
-    Protected WithEvents button1 As Global.System.Web.UI.WebControls.Button
+    Protected WithEvents DDarea As Global.System.Web.UI.WebControls.DropDownList
 
     '''<summary>
-    '''LabelStatus control.
+    '''DDperfarea control.
     '''</summary>
     '''<remarks>
     '''Auto-generated field.
     '''</remarks>
-    Protected WithEvents LabelStatus As Global.System.Web.UI.WebControls.Label
+    Protected WithEvents DDperfarea As Global.System.Web.UI.WebControls.DropDownList
 
     '''<summary>
-    '''FileUpload2 control.
+    '''DDhouseholdnumber control.
     '''</summary>
     '''<remarks>
     '''Auto-generated field.
     '''</remarks>
-    Protected WithEvents FileUpload2 As Global.System.Web.UI.WebControls.FileUpload
+    Protected WithEvents DDhouseholdnumber As Global.System.Web.UI.WebControls.DropDownList
 
     '''<summary>
-    '''button2 control.
+    '''fixtureid control.
     '''</summary>
     '''<remarks>
     '''Auto-generated field.
     '''</remarks>
-    Protected WithEvents button2 As Global.System.Web.UI.WebControls.Button
-
-    '''<summary>
-    '''LabelQStatus control.
-    '''</summary>
-    '''<remarks>
-    '''Auto-generated field.
-    '''</remarks>
-    Protected WithEvents LabelQStatus As Global.System.Web.UI.WebControls.Label
-
-    '''<summary>
-    '''gridview1 control.
-    '''</summary>
-    '''<remarks>
-    '''Auto-generated field.
-    '''</remarks>
-    Protected WithEvents gridview1 As Global.System.Web.UI.WebControls.GridView
+    Protected WithEvents fixtureid As Global.System.Web.UI.HtmlControls.HtmlGenericControl
 
 End Class

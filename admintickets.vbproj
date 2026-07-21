@@ -37,6 +37,7 @@
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Data" />
+    <Reference Include="System.Drawing" />
     <Reference Include="System.Xml" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Configuration" />
@@ -67,15 +68,28 @@
     <Import Include="System" />
     <Import Include="System.Collections" />
     <Import Include="System.Collections.Generic" />
+    <Import Include="System.Collections.Specialized" />
+    <Import Include="System.Configuration" />
     <Import Include="System.Data" />
     <Import Include="System.Diagnostics" />
+    <Import Include="System.Drawing" />
     <Import Include="System.Linq" />
+    <Import Include="System.Text" />
+    <Import Include="System.Text.RegularExpressions" />
     <Import Include="System.Xml.Linq" />
     <Import Include="System.Web" />
+    <Import Include="System.Web.Caching" />
+    <Import Include="System.Web.Security" />
+    <Import Include="System.Web.SessionState" />
+    <Import Include="System.Web.UI" />
+    <Import Include="System.Web.UI.HtmlControls" />
+    <Import Include="System.Web.UI.WebControls" />
+    <Import Include="System.Web.UI.WebControls.WebParts" />
   </ItemGroup>
 
   <!-- All VB source compiled into bin\admintickets.dll -->
   <ItemGroup>
+    <Compile Include="2021all.aspx.designer.vb" />
     <Compile Include="2021all.aspx.vb" />
     <Compile Include="2026print-tickets.aspx.designer.vb" />
     <Compile Include="2026print-tickets.aspx.vb" />
@@ -94,25 +108,43 @@
     <Compile Include="UC_header.ascx.vb" />
     <Compile Include="admin_walkup.aspx.designer.vb" />
     <Compile Include="admin_walkup.aspx.vb" />
+    <Compile Include="ballot_entry.aspx.designer.vb" />
     <Compile Include="ballot_entry.aspx.vb" />
+    <Compile Include="ballot_list.aspx.designer.vb" />
     <Compile Include="ballot_list.aspx.vb" />
+    <Compile Include="dash_control.aspx.designer.vb" />
     <Compile Include="dash_control.aspx.vb" />
+    <Compile Include="dash_display.aspx.designer.vb" />
     <Compile Include="dash_display.aspx.vb" />
+    <Compile Include="default.aspx.designer.vb" />
     <Compile Include="default.aspx.vb" />
+    <Compile Include="export_emails.aspx.designer.vb" />
     <Compile Include="export_emails.aspx.vb" />
+    <Compile Include="export_orders.aspx.designer.vb" />
     <Compile Include="export_orders.aspx.vb" />
+    <Compile Include="fixtureselect.aspx.designer.vb" />
     <Compile Include="fixtureselect.aspx.vb" />
+    <Compile Include="headerless_update.aspx.designer.vb" />
     <Compile Include="headerless_update.aspx.vb" />
+    <Compile Include="import-sales.aspx.designer.vb" />
     <Compile Include="import-sales.aspx.vb" />
+    <Compile Include="login.aspx.designer.vb" />
     <Compile Include="login.aspx.vb" />
+    <Compile Include="newstand.aspx.designer.vb" />
     <Compile Include="newstand.aspx.vb" />
+    <Compile Include="newstandrestricted.aspx.designer.vb" />
     <Compile Include="newstandrestricted.aspx.vb" />
     <Compile Include="print-tickets.aspx.designer.vb" />
     <Compile Include="print-tickets.aspx.vb" />
+    <Compile Include="reports_dash.aspx.designer.vb" />
     <Compile Include="reports_dash.aspx.vb" />
+    <Compile Include="stand.aspx.designer.vb" />
     <Compile Include="stand.aspx.vb" />
+    <Compile Include="standrestricted.aspx.designer.vb" />
     <Compile Include="standrestricted.aspx.vb" />
+    <Compile Include="storetoballot.aspx.designer.vb" />
     <Compile Include="storetoballot.aspx.vb" />
+    <Compile Include="terrace.aspx.designer.vb" />
     <Compile Include="terrace.aspx.vb" />
   </ItemGroup>
 

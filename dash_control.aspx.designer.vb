@@ -11,7 +11,7 @@ Option Strict On
 Option Explicit On
 
 
-Partial Public Class Admin_walkup
+Partial Public Class dash_control
 
     '''<summary>
     '''form1 control.

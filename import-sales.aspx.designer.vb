@@ -11,7 +11,7 @@ Option Strict On
 Option Explicit On
 
 
-Partial Public Class WebForm1
+Partial Public Class WebFormimportsales
 
     '''<summary>
     '''form1 control.
@@ -44,30 +44,6 @@ Partial Public Class WebForm1
     '''Auto-generated field.
     '''</remarks>
     Protected WithEvents LabelStatus As Global.System.Web.UI.WebControls.Label
-
-    '''<summary>
-    '''FileUpload2 control.
-    '''</summary>
-    '''<remarks>
-    '''Auto-generated field.
-    '''</remarks>
-    Protected WithEvents FileUpload2 As Global.System.Web.UI.WebControls.FileUpload
-
-    '''<summary>
-    '''button2 control.
-    '''</summary>
-    '''<remarks>
-    '''Auto-generated field.
-    '''</remarks>
-    Protected WithEvents button2 As Global.System.Web.UI.WebControls.Button
-
-    '''<summary>
-    '''LabelQStatus control.
-    '''</summary>
-    '''<remarks>
-    '''Auto-generated field.
-    '''</remarks>
-    Protected WithEvents LabelQStatus As Global.System.Web.UI.WebControls.Label
 
     '''<summary>
     '''gridview1 control.

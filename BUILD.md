@@ -56,6 +56,18 @@ references resolve; the `bin` folder resolves the third-party ones.)
 
 ---
 
+## About the `.designer.vb` files
+
+The repo was missing (or had stale) auto-generated `*.aspx.designer.vb` files for
+pages that use server controls — without them the build can't resolve control
+fields like `GridView1` or `btntoCsv`. These have been **regenerated from the
+current markup** (the same thing Visual Studio's *Convert to Web Application*
+does) and committed, so the project now builds standalone.
+
+If you later add or rename a server control on a page, update that page's
+`.designer.vb` — easiest via Visual Studio: right-click the `.aspx` →
+**Convert to Web Application**, or just edit the field list by hand.
+
 ## If the build complains about `System.Windows`
 
 Four **unused** legacy hub files — `ChatHub.vb`, `ChatHubnew.vb`,
