@@ -19,12 +19,6 @@ Public Class Global_asax
         ' Fires at the beginning of each request
     End Sub
 
-    Sub Application_AuthenticateRequest(ByVal sender As Object, ByVal e As EventArgs)
-        If Request.Path.ToLower.Contains("notifyhandler.aspx") Then
-            HttpContext.Current.SkipAuthorization = True
-        End If
-    End Sub
-
     Sub Application_Error(ByVal sender As Object, ByVal e As EventArgs)
         ' Fires when an error occurs
     End Sub

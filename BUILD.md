@@ -1,93 +1,52 @@
-# Building without the original solution
+# Building
 
-The original `.sln`/`.vbproj` weren't available, so a minimal, reconstructed
-`admintickets.vbproj` (+ `admintickets.sln`) is included here. It compiles every
-`.vb` file into **`bin\admintickets.dll`** — the only build artifact the app
-needs. The `.aspx`/`.ascx` markup, `Web.config` and static assets are **not**
-built; IIS compiles markup at runtime, so you just copy those to the server.
+This repo has been reduced to the **live dashboard + TicketCo poller** only.
+The build compiles seven `.vb` files into **`bin\admintickets.dll`** — the only
+build artifact. The `.aspx` markup, `Web.config` and static assets deploy as-is
+(IIS compiles markup at runtime).
 
-> Only rebuild is needed because the server-side poller lives in `.vb` code
-> (`ChatHubticketco.vb`, `Global.asax.vb`). Pure markup/config edits deploy as-is.
+Source compiled (see `admintickets.vbproj`):
 
----
+- `ChatHubticketco.vb` — SignalR hub + `TicketcoImporter` + `TicketcoPoller`
+- `Global.asax.vb` — starts the poller on app start
+- `Startup.vb` — OWIN SignalR wiring
+- `dash_display.aspx(.designer).vb`, `dash_control.aspx(.designer).vb`
 
-## Option 1 (recommended): MSBuild via `build.bat`
-
-Needs MSBuild, which comes free with **Build Tools for Visual Studio**
-(installer → *".NET desktop build tools"* workload). No full VS or IDE required.
+## Build
 
 ```cmd
 build.bat
 ```
 
-`build.bat` locates MSBuild (via `vswhere`, falling back to the framework
-MSBuild) and runs:
+`build.bat` locates MSBuild (via `vswhere`, else the framework MSBuild) and runs
+`msbuild admintickets.vbproj /p:Configuration=Release`. You can also open
+`admintickets.sln` in Visual Studio and press **Build**. Output:
+`bin\admintickets.dll`.
 
-```cmd
-msbuild admintickets.vbproj /p:Configuration=Release /p:Platform=AnyCPU
-```
-
-Result: `bin\admintickets.dll` (rebuilt). You can also just double-click
-`admintickets.sln` to open it in Visual Studio if you have it.
-
-## Option 2 (zero install): compile with the in-repo Roslyn `vbc.exe`
-
-The repo already ships a VB compiler at `bin\roslyn\vbc.exe`, so you can rebuild
-with nothing installed. From the repo root:
+No MSBuild installed? The repo ships `bin\roslyn\vbc.exe`; compile directly:
 
 ```cmd
 bin\roslyn\vbc.exe /noconfig /target:library /out:bin\admintickets.dll ^
   /rootnamespace:admintickets /define:"_MYTYPE=\"Web\"" /optioninfer+ /langversion:14 ^
-  /imports:Microsoft.VisualBasic,System,System.Collections,System.Collections.Generic,System.Data,System.Diagnostics,System.Linq,System.Xml.Linq,System.Web ^
+  /imports:Microsoft.VisualBasic,System,System.Collections,System.Collections.Generic,System.Data,System.Diagnostics,System.Linq,System.Web,System.Web.UI,System.Web.UI.HtmlControls,System.Web.UI.WebControls ^
   /libpath:"%WINDIR%\Microsoft.NET\Framework64\v4.0.30319";bin ^
-  /r:System.dll /r:System.Core.dll /r:System.Data.dll /r:System.Xml.dll ^
-  /r:System.Xml.Linq.dll /r:System.Configuration.dll /r:System.Web.dll ^
-  /r:System.Web.Extensions.dll /r:System.Web.Services.dll /r:System.Net.Http.dll ^
-  /r:WindowsBase.dll /r:MySql.Data.dll /r:Newtonsoft.Json.dll ^
-  /r:Microsoft.AspNet.SignalR.Core.dll /r:Microsoft.AspNet.SignalR.SystemWeb.dll ^
-  /r:Microsoft.Owin.dll /r:Microsoft.Owin.Host.SystemWeb.dll ^
-  /r:Microsoft.Owin.Security.dll /r:Owin.dll /r:Microsoft.Web.Infrastructure.dll ^
-  /r:DocumentFormat.OpenXml.dll ^
-  *.vb
+  /r:System.dll /r:System.Core.dll /r:System.Data.dll /r:System.Configuration.dll /r:System.Web.dll ^
+  /r:MySql.Data.dll /r:Newtonsoft.Json.dll /r:Microsoft.AspNet.SignalR.Core.dll ^
+  /r:Microsoft.AspNet.SignalR.SystemWeb.dll /r:Microsoft.Owin.dll ^
+  /r:Microsoft.Owin.Host.SystemWeb.dll /r:Owin.dll /r:Microsoft.Web.Infrastructure.dll ^
+  ChatHubticketco.vb Global.asax.vb Startup.vb ^
+  dash_control.aspx.designer.vb dash_control.aspx.vb ^
+  dash_display.aspx.designer.vb dash_display.aspx.vb
 ```
 
-(`/libpath` includes the framework folder so the bare framework `.dll`
-references resolve; the `bin` folder resolves the third-party ones.)
+## After building — deploy
 
----
+Copy to the server (full list in `deploy-manifest.md`): `bin\admintickets.dll`,
+the two `.aspx` files, `Web.config`, and the `Scripts\ css\ images\` assets.
+Set the `Ticketco*` keys in `Web.config` and recycle the app pool.
 
-## About the `.designer.vb` files
+## Adding a server control later
 
-The repo was missing (or had stale) auto-generated `*.aspx.designer.vb` files for
-pages that use server controls — without them the build can't resolve control
-fields like `GridView1` or `btntoCsv`. These have been **regenerated from the
-current markup** (the same thing Visual Studio's *Convert to Web Application*
-does) and committed, so the project now builds standalone.
-
-If you later add or rename a server control on a page, update that page's
-`.designer.vb` — easiest via Visual Studio: right-click the `.aspx` →
-**Convert to Web Application**, or just edit the field list by hand.
-
-## If the build complains about `System.Windows`
-
-Four **unused** legacy hub files — `ChatHub.vb`, `ChatHubnew.vb`,
-`ChatHubrestricted.vb`, `ChatHubnewrestricted.vb` — carry a stray
-`Imports System.Windows` (WPF). The project already references `WindowsBase.dll`
-to satisfy it. If you'd rather drop the WPF reference entirely, delete that one
-`Imports System.Windows` line from each of those four files (nothing uses it),
-then remove `WindowsBase` from the references.
-
-## After a successful build — deploy
-
-Copy to the server (see `deploy-manifest.md` for the full list):
-
-1. `bin\admintickets.dll`  ← the rebuilt assembly
-2. `dash_display.aspx`, `dash_control.aspx`  ← changed markup
-3. `Web.config`  ← now contains the `Ticketco*` appSettings
-
-Then set `TicketcoAutoStart` / `TicketcoActiveEventId` and recycle the app pool.
-
-> Heads up: this reconstructed project lists all `.vb` as flat `<Compile>` items
-> (no Solution-Explorer nesting of `.designer.vb` under their pages). That has no
-> effect on the compiled output — it only looks flat in the VS tree. If your real
-> `.sln`/`.vbproj` turns up later, prefer it and delete these reconstructed files.
+If you add a control to a dashboard page, add a matching field to that page's
+`.designer.vb` (or, in Visual Studio, right-click the `.aspx` → **Convert to
+Web Application**).
