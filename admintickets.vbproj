@@ -40,6 +40,7 @@
     <Reference Include="System.Xml" />
     <Reference Include="System.Configuration" />
     <Reference Include="System.Web" />
+    <Reference Include="System.Web.Extensions" />
   </ItemGroup>
 
   <!-- Third-party references (shipped in bin\) -->
@@ -75,10 +76,14 @@
     <Compile Include="ChatHubticketco.vb" />
     <Compile Include="Global.asax.vb" />
     <Compile Include="Startup.vb" />
+    <Compile Include="UC_footer.ascx.vb" />
+    <Compile Include="UC_header.ascx.vb" />
     <Compile Include="dash_control.aspx.designer.vb" />
     <Compile Include="dash_control.aspx.vb" />
     <Compile Include="dash_display.aspx.designer.vb" />
     <Compile Include="dash_display.aspx.vb" />
+    <Compile Include="2026print-tickets.aspx.designer.vb" />
+    <Compile Include="2026print-tickets.aspx.vb" />
   </ItemGroup>
 
   <Import Project="$(MSBuildToolsPath)\Microsoft.VisualBasic.targets" />
