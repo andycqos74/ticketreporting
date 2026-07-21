@@ -13,7 +13,7 @@
     <ProjectGuid>{A1B2C3D4-1111-4A5B-9C7D-000000000001}</ProjectGuid>
     <RootNamespace>admintickets</RootNamespace>
     <AssemblyName>admintickets</AssemblyName>
-    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <MyType>Web</MyType>
     <OptionExplicit>On</OptionExplicit>
     <OptionStrict>Off</OptionStrict>
