@@ -71,7 +71,23 @@
 
                 </div>
             </div>
-           
+
+            <div class="row pt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">Poller status</div>
+                        <div class="card-body">
+                            <p class="mb-2">
+                                State:
+                                <span id="statusState" class="badge badge-secondary">Unknown</span>
+                            </p>
+                            <p class="mb-2">Current fixture ID: <strong id="statusFixture">-</strong></p>
+                            <p class="mb-0">Current refresh interval: <strong id="statusInterval">-</strong> secs</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
                            <div class="row pt-4">
                 <div class="col-12 text-right">
                     <h5 id="log">NP</h5>
@@ -196,69 +212,77 @@
             //});
 
 
-            setTimeout(function () {
-            $.connection.hub.start().done(function () {
-                ////////$('#sendmessage').click(function () {
-                ////////    // Call the Send method on the hub. 
-                
-                ////////    // Clear text box and reset focus for next comment. 
-                ////////    $('#message').val('').focus();
-                ////////});
+            var statusTimer = null;
 
-                // Start now tells the SERVER to run its own poll loop
-                // (API import + broadcast) for this fixture. Once started the
-                // loop lives in the web app, so this browser tab can be closed.
-                $("#btnstart").click(function (event) {
-                    event.stopPropagation();
-                    event.stopImmediatePropagation();
-                    event.preventDefault();
+            // Ask the server for the poller's real state and paint the status line.
+            function refreshStatus() {
+                chat.server.getStatus()
+                    .done(function (s) {
+                        if (s.running) {
+                            $("#statusState").text("Running")
+                                .removeClass("badge-secondary badge-danger").addClass("badge-success");
+                        } else {
+                            $("#statusState").text("Stopped")
+                                .removeClass("badge-secondary badge-success").addClass("badge-danger");
+                        }
+                        $("#statusFixture").text(s.eventId);
+                        $("#statusInterval").text(s.intervalSeconds);
+                    });
+            }
 
-                    var fixtureId = $.trim($("#fixtureid").val());
-                    var interval = parseInt($("#updateInterval").val(), 10) || 30;
+            // Start tells the SERVER to run its own poll loop (API import +
+            // broadcast) for this fixture/interval. Once started the loop lives
+            // in the web app, so this browser tab can be closed.
+            $("#btnstart").click(function (event) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
 
-                    if (!fixtureId) {
-                        $("#log").text("Enter a Fixture ID first.");
-                        return;
-                    }
+                var fixtureId = $.trim($("#fixtureid").val());
+                var interval = parseInt($("#updateInterval").val(), 10) || 30;
 
-                    chat.server.startPolling(fixtureId, interval)
-                        .done(function () {
-                            $("#log").text("Server polling started for fixture " + fixtureId + " every " + interval + "s.");
-                        })
-                        .fail(function (e) {
-                            $("#log").text("Start failed: " + e);
-                        });
-                });
+                if (!fixtureId) {
+                    $("#log").text("Enter a Fixture ID first.");
+                    return;
+                }
 
-                $("#btnstop").click(function (event) {
-                    event.stopPropagation();
-                    event.stopImmediatePropagation();
-                    event.preventDefault();
-
-                    chat.server.stopPolling()
-                        .done(function () {
-                            $("#log").text("Server polling stopped.");
-                        })
-                        .fail(function (e) {
-                            $("#log").text("Stop failed: " + e);
-                        });
-                });
-
-
-              
+                chat.server.startPolling(fixtureId, interval)
+                    .done(function () {
+                        $("#log").text("Server polling started for fixture " + fixtureId + " every " + interval + "s.");
+                        refreshStatus();
+                    })
+                    .fail(function (e) { $("#log").text("Start failed: " + e); });
             });
 
-   $.connection.hub.start().done(function () {
+            $("#btnstop").click(function (event) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
 
-            ////////    // Call the Send method on the hub. 
-       chat.server.populateDataTable('');
+                chat.server.stopPolling()
+                    .done(function () {
+                        $("#log").text("Server polling stopped.");
+                        refreshStatus();
+                    })
+                    .fail(function (e) { $("#log").text("Stop failed: " + e); });
+            });
 
+            function connect() {
+                $.connection.hub.start()
+                    .done(function () {
+                        refreshStatus();
+                        // Keep the status line honest even if the poller is
+                        // started/stopped from another browser or by auto-start.
+                        if (!statusTimer) { statusTimer = setInterval(refreshStatus, 5000); }
+                    })
+                    .fail(function () { setTimeout(connect, 5000); });
+            }
 
+            $.connection.hub.disconnected(function () {
+                $("#statusState").text("Disconnected")
+                    .removeClass("badge-success badge-danger").addClass("badge-secondary");
+                setTimeout(connect, 5000);
+            });
 
-        });
-
-
-            }, 5000);
+            connect();
 
 
 

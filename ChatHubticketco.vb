@@ -45,6 +45,19 @@ Public Class ChatHubticketco
     End Sub
 
     ''' <summary>
+    ''' Report the poller's current state to the control page (running flag,
+    ''' active fixture, and the interval in seconds). Serialised to JSON for the
+    ''' browser as { running, eventId, intervalSeconds }.
+    ''' </summary>
+    Public Function GetStatus() As Object
+        Return New With {
+            .running = TicketcoPoller.IsRunning,
+            .eventId = TicketcoPoller.ActiveEventId,
+            .intervalSeconds = TicketcoPoller.IntervalSeconds
+        }
+    End Function
+
+    ''' <summary>
     ''' Run a single import + broadcast immediately (used for a manual refresh
     ''' and for the very first paint when a dashboard connects).
     ''' </summary>
@@ -359,6 +372,7 @@ Public NotInheritable Class TicketcoPoller
     Private Shared ReadOnly SyncRoot As New Object()
     Private Shared _timer As Timer
     Private Shared _eventId As String = ""
+    Private Shared _intervalSeconds As Integer = 0
     Private Shared _running As Integer = 0            ' 0 = idle, 1 = a tick is in progress
     Public Shared Property LastError As String = ""
     Public Shared Property LastRunUtc As DateTime = DateTime.MinValue
@@ -377,6 +391,20 @@ Public NotInheritable Class TicketcoPoller
         End Get
     End Property
 
+    ''' <summary>True while the poll timer is armed.</summary>
+    Public Shared ReadOnly Property IsRunning As Boolean
+        Get
+            Return _timer IsNot Nothing
+        End Get
+    End Property
+
+    ''' <summary>The interval (seconds) the poll timer is currently using.</summary>
+    Public Shared ReadOnly Property IntervalSeconds As Integer
+        Get
+            Return _intervalSeconds
+        End Get
+    End Property
+
     ''' <summary>Start (or retarget) the poll loop.</summary>
     Public Shared Sub Start(ByVal eventid As String, ByVal intervalSeconds As Integer)
         If intervalSeconds < 5 Then intervalSeconds = 5   ' don't hammer the API
@@ -384,6 +412,7 @@ Public NotInheritable Class TicketcoPoller
             If Not String.IsNullOrEmpty(eventid) Then
                 _eventId = eventid
             End If
+            _intervalSeconds = intervalSeconds
             If _timer Is Nothing Then
                 _timer = New Timer(AddressOf TimerCallback, Nothing, 0, intervalSeconds * 1000)
             Else
