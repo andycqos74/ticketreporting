@@ -1,0 +1,9 @@
+﻿/*******************************/
+@media print {
+    .print-body {
+        width: 86mm;
+        height: 54mm;
+        border: 1px solid black;
+    }
+
+}
