@@ -1,103 +1,70 @@
-﻿Imports System
+Imports System
 Imports System.Web
 Imports Microsoft.AspNet.SignalR
 Imports System.Data
-Imports System.Windows
-
 Imports System.Configuration
-Imports MySql.Data.MySqlClient
-Imports Newtonsoft.Json
 Imports System.Net
-Imports System.IO
+Imports System.Threading
+Imports MySql.Data.MySqlClient
+Imports Newtonsoft.Json.Linq
 
+' =============================================================================
+'  ChatHubticketco
+'  ---------------------------------------------------------------------------
+'  Single, central place where the TicketCo API is polled, the results are
+'  written to MySQL, and the dashboard is pushed an update -- all in the same
+'  sequential operation so the "push" can never run ahead of the "import".
+'
+'  This replaces the previous split model (n8n -> import_JSON.php -> DB, plus a
+'  browser tab on dash_control driving the broadcast). The server now owns the
+'  loop, so no external scheduler and no open browser tab are required.
+'
+'  Flow of one tick (see TicketcoPoller.Tick):
+'     1. TicketcoImporter.FetchAndStore  -> calls API, upserts ticketco_matchsales
+'     2. PopulateDataTable               -> reads vw_ticketsalesreport, broadcasts
+' =============================================================================
 Public Class ChatHubticketco
     Inherits Hub
 
+    ' -------------------------------------------------------------------------
+    '  Hub methods callable from the browser (dash_control.aspx)
+    ' -------------------------------------------------------------------------
 
-
-
-    Public Sub ImportJSON()
-
-
-        'Dim req As WebRequest = WebRequest.Create("http://phpupdates.qosfc.com/import_json.php")
-        'Dim res As WebResponse = req.GetResponse()
-        'Dim sr As StreamReader = New StreamReader(res.GetResponseStream())
-        'Dim html As String = sr.ReadToEnd()
-
-        ''then run populate datatable to send values back to page
-        'PopulateDataTable("924084")
-
-
-
-        '***********send fixture ID from javascript on control page
-
-        '**********add event ID to JSON URL
-
-
-
-        '''add JSON import here - copy from json test
-        'Dim tbl = New DataTable
-        'ServicePointManager.Expect100Continue = True
-        'ServicePointManager.SecurityProtocol = CType(3072, SecurityProtocolType)
-        '  Dim json As String = (New WebClient).("http://mysafeinfo.com/api/data?list=englishmonarchs&format=json")
-
-
-
-        'tbl = JsonConvert.DeserializeObject(Of DataTable)(json)
-
-
-
-        ''**********add to DB
-        'For Each dr As DataRow In tbl.Rows
-
-        '    Dim constr As String = ConfigurationManager.ConnectionStrings("QosTickets").ConnectionString
-        '    Using con As MySqlConnection = New MySqlConnection(constr)
-        '        Using cmd As MySqlCommand = New MySqlCommand("REPLACE INTO ticketco_matchsales (PurchaseDate,  TicketCoRef,GroundArea,TicketType, EventName, QtySold, QtyCheckedIn, CheckedInDate, CheckedInOperator) VALUES (@PurchaseDate, @TicketCoRef,@GroundArea,@TicketType, @EventName, @QtySold, @QtyCheckedIn, @CheckedInDate, @CheckedInOperator)")
-        '            Using sda As MySqlDataAdapter = New MySqlDataAdapter()
-        '                cmd.Parameters.AddWithValue("@PurchaseDate", dr.Item("Column_1"))
-
-        '                cmd.Parameters.AddWithValue("@TicketCoRef", dr.Item("Column_7"))
-        '                cmd.Parameters.AddWithValue("@GroundArea", dr.Item("Column_8"))
-
-        '                cmd.Parameters.AddWithValue("@TicketType", dr.Item("Column_13"))
-
-        '                cmd.Parameters.AddWithValue("@EventName", dr.Item("Column_12"))
-        '                cmd.Parameters.AddWithValue("@QtySold", dr.Item("Column_35"))
-        '                cmd.Parameters.AddWithValue("@QtyCheckedIn", dr.Item("Column_36"))
-        '                cmd.Parameters.AddWithValue("@CheckedInDate", dr.Item("Column_37"))
-        '                cmd.Parameters.AddWithValue("@CheckedInOperator", dr.Item("Column_38"))
-
-
-        '                '***********get eventname from import???
-
-        '                cmd.Connection = con
-        '                con.Open()
-        '                cmd.ExecuteNonQuery()
-        '                con.Close()
-        '            End Using
-        '        End Using
-        '    End Using
-
-        'Next
-
-
-        '***********get eventname from import??? - send to populate data table
-
-
-
+    ''' <summary>
+    ''' Start the server-side poll loop for a fixture. Called once from
+    ''' dash_control; the loop then runs in the app regardless of whether the
+    ''' browser tab stays open.
+    ''' </summary>
+    Public Sub StartPolling(ByVal eventid As String, ByVal intervalSeconds As Integer)
+        TicketcoPoller.Start(eventid, intervalSeconds)
     End Sub
 
+    ''' <summary>Stop the server-side poll loop.</summary>
+    Public Sub StopPolling()
+        TicketcoPoller.[Stop]()
+    End Sub
 
+    ''' <summary>
+    ''' Run a single import + broadcast immediately (used for a manual refresh
+    ''' and for the very first paint when a dashboard connects).
+    ''' </summary>
+    Public Sub ImportJSON()
+        Dim eventid As String = TicketcoPoller.ActiveEventId
+        TicketcoImporter.FetchAndStore(eventid)
+        PopulateDataTable(eventid)
+    End Sub
 
-
-
+    ' -------------------------------------------------------------------------
+    '  Read the aggregated view and broadcast a snapshot to every dashboard.
+    '  NOTE: the broadcastMessage argument order/count below is the contract
+    '  consumed by dash_display.aspx -- do not change it without updating the
+    '  page's JavaScript handler to match.
+    ' -------------------------------------------------------------------------
     Public Sub PopulateDataTable(ByVal eventid As String)
 
-        If eventid = "" Then
-            eventid = "924084"
+        If String.IsNullOrEmpty(eventid) Then
+            eventid = TicketcoPoller.ActiveEventId
         End If
-
-
 
         Dim sqlstring As String
         Dim TotalCheckedIn As String = 0
@@ -140,13 +107,9 @@ Public Class ChatHubticketco
 
         Dim fixturename As String
 
-
-        '        sqlstring = "Select * From qosfctickets.ticketco_matchsales Where fixtureid = '" & eventid & "';"
         sqlstring = "Select * From qosfctickets.vw_ticketsalesreport;"
 
         Try
-
-
 
             Dim constr As String = ConfigurationManager.ConnectionStrings("QosTickets").ConnectionString
             Using con As New MySqlConnection(constr)
@@ -190,7 +153,6 @@ Public Class ChatHubticketco
                             Alpha3CheckedIn = dt.Rows(0)("Alpha3CheckedIn").ToString
                             Alpha4CheckedIn = dt.Rows(0)("Alpha4CheckedIn").ToString
 
-
                             AlphaTS1 = dt.Rows(0)("AlphaTS1").ToString
                             AlphaTS2 = dt.Rows(0)("AlphaTS2").ToString
                             EncTS1 = dt.Rows(0)("EncTS1").ToString
@@ -198,135 +160,21 @@ Public Class ChatHubticketco
                             BDSTS1 = dt.Rows(0)("BDSTS1").ToString
                             BDSTS2 = dt.Rows(0)("BDSTS2").ToString
 
-
-
-
-
-
-
-
-
-                            ''''''AwayCheckedIn = CheckNull(Convert.ToString(dt.Compute("SUM(QTYCheckedIn)", "tickettype Like '%away%'")))
-                            ''''''HomeCheckedIn = CheckNull(Convert.ToString(dt.Compute("SUM(QTYCheckedIn)", "tickettype  Like '%home%'")))
-                            ''''''AwaySold = CheckNull(Convert.ToString(dt.Compute("SUM(QTYSold)", "groundarea <> 'MATCHDAY WALK-UP' AND tickettype Like '%away%'")))
-                            '''''''old --------HomeSold = CheckNull(Convert.ToString(dt.Compute("SUM(QTYSold)", "tickettype not Like '%away%' and tickettype Not Like '%season%' And tickettype Not Like '%shirt draw%' And tickettype Not Like '%walk%' AND tickettype not like '%comp%'  AND tickettype not like '%executive%'")))
-                            ''''''HomeSold = CheckNull(Convert.ToString(dt.Compute("SUM(QTYSold)", "groundarea <> 'MATCHDAY WALK-UP'' AND tickettype Like '%HOME%'  AND ticketcotickettype not Like '%season%'")))
-                            ''''''''ticketcotype <> season and tickettype <> walk ticketype <> away
-
-                            ''''''other = CheckNull(Convert.ToString(dt.Compute("SUM(QTYSold)", "tickettype  Like '%other%'")))
-
-                            '''''TotalCheckedIn = CheckNull(Convert.ToString(dt.Compute("SUM(QTYCheckedIn)", String.Empty)))
-
-                            '''''WalkUpCheckedIn = CheckNull(Convert.ToString(dt.Compute("SUM(QTYCheckedIn)", "groundarea = 'MATCHDAY WALK-UP' AND tickettype not Like '%comp%'")))
-                            '''''AwayWalkUpCheckedIn = CheckNull(Convert.ToString(dt.Compute("SUM(QTYCheckedIn)", "groundarea = 'MATCHDAY WALK-UP' AND (CheckedInOperator = '3299870' OR CheckedInOperator = '3299872')")))
-                            '''''HomeWalkUpCheckedIn = CheckNull(Convert.ToString(dt.Compute("SUM(QTYCheckedIn)", "groundarea = 'MATCHDAY WALK-UP' AND (CheckedInOperator <> '3299870' AND CheckedInOperator <> '3299872')")))
-
-
-
-
-                            '''''''old-----OnlineCheckedIn = CheckNull(Convert.ToString(dt.Compute("SUM(QTYCheckedIn)", "tickettype Not Like '%season%' And tickettype Not Like '%shirt draw%' And tickettype Not Like '%walk%' AND tickettype not like '%comp%'  AND tickettype not like '%executive%'")))
-                            ''''''OnlineCheckedIn = CheckNull(Convert.ToString(dt.Compute("SUM(QTYCheckedIn)", "groundarea <> 'MATCHDAY WALK-UP'  AND ticketcotickettype not like '%season%' AND tickettype not Like '%comp%' AND tickettype not Like '%carer%'")))
-                            '''''''ticketcotype <> season and tickettype <> walk
-
-
-                            '''''''old-----OnlineSold = CheckNull(Convert.ToString(dt.Compute("SUM(QTYSold)", "tickettype Not Like '%season%' And tickettype Not Like '%shirt draw%' And tickettype Not Like '%walk%' AND tickettype not like '%comp%'  AND tickettype not like '%executive%'")))
-                            ''''''OnlineSold = CheckNull(Convert.ToString(dt.Compute("SUM(QTYSold)", "groundarea <> 'MATCHDAY WALK-UP' AND tickettype not Like '%comp%' AND ticketcotickettype not like '%season%'  AND tickettype not Like '%carer")))
-                            '''''''ticketcotype <> season and tickettype <> walk
-
-
-                            ''''''SeasonTicketsCheckedIn = CheckNull(Convert.ToString(dt.Compute("SUM(QTYCheckedIn)", "ticketcotickettype Like '%season%'  AND tickettype not Like '%comp%'  AND tickettype not Like '%carer")))
-
-                            ''''''CompsCheckedIn = CheckNull(Convert.ToString(dt.Compute("SUM(QTYCheckedIn)", "tickettype  Like '%comp%'")))
-                            '''''''ticketcotype = season
-
-                            '''''''******************* normal data for checked in against section ******************************************************************
-
-                            ''''''BDS1CheckedIn = CheckNull(Convert.ToString(dt.Compute("SUM(QTYCheckedIn)", "groundarea = 'SECTION 1 - BDS DIGITAL STAND'")))
-                            ''''''BDS2CheckedIn = CheckNull(Convert.ToString(dt.Compute("SUM(QTYCheckedIn)", "groundarea = 'SECTION 2 - BDS DIGITAL STAND'")))
-                            ''''''BDS3CheckedIn = CheckNull(Convert.ToString(dt.Compute("SUM(QTYCheckedIn)", "groundarea = 'SECTION 3 - BDS DIGITAL STAND'")))
-                            ''''''BDS4CheckedIn = CheckNull(Convert.ToString(dt.Compute("SUM(QTYCheckedIn)", "groundarea = 'SECTION 4 - BDS DIGITAL STAND'")))
-                            ''''''BDS5CheckedIn = CheckNull(Convert.ToString(dt.Compute("SUM(QTYCheckedIn)", "groundarea = 'SECTION 5 - BDS DIGITAL STAND'")))
-                            ''''''BDS6CheckedIn = CheckNull(Convert.ToString(dt.Compute("SUM(QTYCheckedIn)", "groundarea = 'SECTION 6 - BDS DIGITAL STAND'")))
-                            ''''''BDS7CheckedIn = CheckNull(Convert.ToString(dt.Compute("SUM(QTYCheckedIn)", "groundarea = 'SECTION 7 - BDS DIGITAL STAND'")))
-                            ''''''BDS8CheckedIn = CheckNull(Convert.ToString(dt.Compute("SUM(QTYCheckedIn)", "groundarea = 'SECTION 8 - BDS DIGITAL STAND'")))
-                            ''''''BDS9CheckedIn = CheckNull(Convert.ToString(dt.Compute("SUM(QTYCheckedIn)", "groundarea = 'SECTION 9 - BDS DIGITAL STAND'")))
-                            ''''''OakbankCheckedIn = CheckNull(Convert.ToString(dt.Compute("SUM(QTYCheckedIn)", "groundarea = 'OAKBANK SERVICES TERRACE'")))
-                            ''''''TerreglesCheckedIn = CheckNull(Convert.ToString(dt.Compute("SUM(QTYCheckedIn)", "groundarea = 'TERREGLES STREET TERRACE'")))
-                            ''''''Alpha1CheckedIn = CheckNull(Convert.ToString(dt.Compute("SUM(QTYCheckedIn)", "groundarea = 'SECTION 1 - MAIN STAND'")))
-                            ''''''Alpha2CheckedIn = CheckNull(Convert.ToString(dt.Compute("SUM(QTYCheckedIn)", "groundarea = 'SECTION 2 - MAIN STAND'")))
-                            ''''''Alpha3CheckedIn = CheckNull(Convert.ToString(dt.Compute("SUM(QTYCheckedIn)", "groundarea = 'SECTION 3 - MAIN STAND'")))
-                            ''''''Alpha4CheckedIn = CheckNull(Convert.ToString(dt.Compute("SUM(QTYCheckedIn)", "groundarea = 'SECTION 4 - MAIN STAND'")))
-
-
-
-                            '**********************************************************************************************************************************
-
-                            '******************* temp data to show sold **************************************************************************************
-
-                            'BDS1CheckedIn = CheckNull(Convert.ToString(dt.Compute("SUM(QTYSold)", "groundarea = 'SECTION 1 - BDS DIGITAL STAND'")))
-                            'BDS2CheckedIn = CheckNull(Convert.ToString(dt.Compute("SUM(QTYSold)", "groundarea = 'SECTION 2 - BDS DIGITAL STAND'")))
-                            'BDS3CheckedIn = CheckNull(Convert.ToString(dt.Compute("SUM(QTYSold)", "groundarea = 'SECTION 3 - BDS DIGITAL STAND'")))
-                            'BDS4CheckedIn = CheckNull(Convert.ToString(dt.Compute("SUM(QTYSold)", "groundarea = 'SECTION 4 - BDS DIGITAL STAND'")))
-                            'BDS5CheckedIn = CheckNull(Convert.ToString(dt.Compute("SUM(QTYSold)", "groundarea = 'SECTION 5 - BDS DIGITAL STAND'")))
-                            'BDS6CheckedIn = CheckNull(Convert.ToString(dt.Compute("SUM(QTYSold)", "groundarea = 'SECTION 6 - BDS DIGITAL STAND'")))
-                            'BDS7CheckedIn = CheckNull(Convert.ToString(dt.Compute("SUM(QTYSold)", "groundarea = 'SECTION 7 - BDS DIGITAL STAND'")))
-                            'BDS8CheckedIn = CheckNull(Convert.ToString(dt.Compute("SUM(QTYSold)", "groundarea = 'SECTION 8 - BDS DIGITAL STAND'")))
-                            'BDS9CheckedIn = CheckNull(Convert.ToString(dt.Compute("SUM(QTYSold)", "groundarea = 'SECTION 9 - BDS DIGITAL STAND'")))
-                            'OakbankCheckedIn = CheckNull(Convert.ToString(dt.Compute("SUM(QTYSold)", "groundarea = 'OAKBANK SERVICES TERRACE'")))
-                            'TerreglesCheckedIn = CheckNull(Convert.ToString(dt.Compute("SUM(QTYSold)", "groundarea = 'TERREGLES STREET TERRACE'")))
-                            'Alpha1CheckedIn = CheckNull(Convert.ToString(dt.Compute("SUM(QTYSold)", "groundarea = 'SECTION 1 - MAIN STAND'")))
-                            'Alpha2CheckedIn = CheckNull(Convert.ToString(dt.Compute("SUM(QTYSold)", "groundarea = 'SECTION 2 - MAIN STAND'")))
-                            'Alpha3CheckedIn = CheckNull(Convert.ToString(dt.Compute("SUM(QTYSold)", "groundarea = 'SECTION 3 - MAIN STAND'")))
-                            'Alpha4CheckedIn = CheckNull(Convert.ToString(dt.Compute("SUM(QTYSold)", "groundarea = 'SECTION 4 - MAIN STAND'")))
-
-                            '**********************************************************************************************************************************
-
-                            '''''AlphaTS1 = CheckNull(Convert.ToString(dt.Compute("SUM(QTYCheckedIn)", "CheckedInOperator = '3169864'")))
-                            '''''AlphaTS2 = CheckNull(Convert.ToString(dt.Compute("SUM(QTYCheckedIn)", "CheckedInOperator = '3169868' OR CheckedInOperator = '3169871'")))
-                            '''''EncTS1 = CheckNull(Convert.ToString(dt.Compute("SUM(QTYCheckedIn)", "CheckedInOperator = '3299860'")))
-                            '''''TerraceTS1 = CheckNull(Convert.ToString(dt.Compute("SUM(QTYCheckedIn)", "CheckedInOperator = '3299862' OR CheckedInOperator = '3299865'")))
-                            '''''BDSTS1 = CheckNull(Convert.ToString(dt.Compute("SUM(QTYCheckedIn)", "CheckedInOperator = '3299867'  OR CheckedInOperator = '3299868'")))
-                            '''''BDSTS2 = CheckNull(Convert.ToString(dt.Compute("SUM(QTYCheckedIn)", "CheckedInOperator = '3299870' OR CheckedInOperator = '3299872'")))
-
-
-
-
-
-                            'HomeCheckedIn walkup checked in
-                            'AwayCheckedIn walkup checked in - from tunrstile
-
                             ReportedCrowd = CInt(OnlineSold) + CInt(SeasonTicketsCheckedIn) + CInt(WalkUpCheckedIn) + CInt(other)
-
-
-
-                            'Clients.All.broadcastMessage(TotalCheckedIn, WalkUpCheckedIn, OnlineCheckedIn, OnlineSold, SeasonTicketsCheckedIn, AwaySold, HomeSold, AwayCheckedIn, HomeCheckedIn, BDS1CheckedIn, BDS2CheckedIn, BDS3CheckedIn, BDS4CheckedIn, BDS5CheckedIn, BDS7CheckedIn, BDS8CheckedIn, BDS9CheckedIn, OakbankCheckedIn, TerreglesCheckedIn, Alpha1CheckedIn, Alpha2CheckedIn, Alpha3CheckedIn, Alpha4CheckedIn, AlphaTS1, AlphaTS2, EncTS1, TerraceTS1, BDSTS1, BDSTS2, "Last Update : " & DateTime.Now.ToString(" HH:mm:ss"), BDS6CheckedIn, ReportedCrowd, other, CompsCheckedIn, fixturename, "OK")
 
                             Dim hubContext = GlobalHost.ConnectionManager.GetHubContext(Of ChatHubticketco)()
                             hubContext.Clients.All.broadcastMessage(TotalCheckedIn, WalkUpCheckedIn, OnlineCheckedIn, OnlineSold, SeasonTicketsCheckedIn, AwaySold, HomeSold, AwayCheckedIn, HomeCheckedIn, BDS1CheckedIn, BDS2CheckedIn, BDS3CheckedIn, BDS4CheckedIn, BDS5CheckedIn, BDS7CheckedIn, BDS8CheckedIn, BDS9CheckedIn, OakbankCheckedIn, TerreglesCheckedIn, Alpha1CheckedIn, Alpha2CheckedIn, Alpha3CheckedIn, Alpha4CheckedIn, AlphaTS1, AlphaTS2, EncTS1, TerraceTS1, BDSTS1, BDSTS2, "Last Update : " & DateTime.Now.ToString(" HH:mm:ss"), BDS6CheckedIn, ReportedCrowd, other, CompsCheckedIn, fixturename, "OK")
-
 
                         End Using
                     End Using
                 End Using
             End Using
 
-
-
-
         Catch ex As Exception
 
-
-            'Clients.All.broadcastMessage(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ex)
-
-
             Dim hubContext = GlobalHost.ConnectionManager.GetHubContext(Of ChatHubticketco)()
-            hubContext.Clients.All.broadcastMessage(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ex)
+            hubContext.Clients.All.broadcastMessage(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ex.Message)
         End Try
-
-
-
-
-
 
     End Sub
 
@@ -337,6 +185,272 @@ Public Class ChatHubticketco
         Return value
     End Function
 
+End Class
 
+
+' =============================================================================
+'  TicketcoImporter
+'  ---------------------------------------------------------------------------
+'  Pulls the item_grosses feed for one event from the TicketCo public API and
+'  upserts each line into ticketco_matchsales. This is the VB equivalent of the
+'  old import_JSON.php, but parameterised (no SQL string interpolation) and with
+'  the API token / DB credentials taken from configuration instead of hardcoded.
+' =============================================================================
+Public NotInheritable Class TicketcoImporter
+
+    Private Sub New()
+    End Sub
+
+    Private Const ApiBase As String = "https://ticketco.events/api/public/v1/item_grosses"
+
+    ''' <summary>
+    ''' Fetch every page of item_grosses for <paramref name="eventid"/> and
+    ''' upsert into ticketco_matchsales. Returns the number of rows written.
+    ''' </summary>
+    Public Shared Function FetchAndStore(ByVal eventid As String) As Integer
+
+        If String.IsNullOrEmpty(eventid) Then
+            Return 0
+        End If
+
+        Dim token As String = ConfigurationManager.AppSettings("TicketcoApiToken")
+        If String.IsNullOrEmpty(token) Then
+            Throw New ConfigurationErrorsException("Missing appSettings key 'TicketcoApiToken'.")
+        End If
+
+        ' TicketCo is HTTPS/TLS 1.2 only.
+        ServicePointManager.Expect100Continue = True
+        ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12
+
+        Dim constr As String = ConfigurationManager.ConnectionStrings("QosTickets").ConnectionString
+        Dim rowsWritten As Integer = 0
+
+        Using con As New MySqlConnection(constr)
+            con.Open()
+
+            Dim page As Integer = 1
+            Dim keepGoing As Boolean = True
+
+            Do While keepGoing
+
+                Dim url As String = String.Format("{0}?token={1}&event_id={2}&page={3}",
+                                                  ApiBase, Uri.EscapeDataString(token),
+                                                  Uri.EscapeDataString(eventid), page)
+
+                Dim json As String
+                Using wc As New WebClient()
+                    wc.Headers("User-Agent") = "QOSFC-Dashboard/1.0"
+                    json = wc.DownloadString(url)
+                End Using
+
+                Dim root As JObject = JObject.Parse(json)
+                Dim items As JArray = TryCast(root("item_grosses"), JArray)
+
+                If items Is Nothing OrElse items.Count = 0 Then
+                    keepGoing = False
+                Else
+                    For Each item As JObject In items
+                        StoreRow(con, item, eventid)
+                        rowsWritten += 1
+                    Next
+                    page += 1
+                End If
+            Loop
+        End Using
+
+        Return rowsWritten
+    End Function
+
+    ' Upsert a single item_grosses record. Mirrors the check-in / turnstile
+    ' mapping that import_JSON.php used, so the downstream view is unchanged.
+    Private Shared Sub StoreRow(ByVal con As MySqlConnection, ByVal item As JObject, ByVal fixtureid As String)
+
+        Dim transactionDatestamp As String = GetStr(item, "transaction_datestamp")
+        Dim refNumber As String = GetStr(item, "ref_number")
+        Dim sectionName As String = GetStr(item, "section_name")
+        Dim itemTypeTitle As String = GetStr(item, "item_type_title")
+        Dim eventName As String = GetStr(item, "event_name")
+        Dim checkedInAt As String = GetStr(item, "checked_in_at")
+        Dim checkedOutAt As String = GetStr(item, "checked_out_at")
+        Dim checkInUserId As String = GetStr(item, "check_in_user_id")
+        Dim itemTypeType As String = GetStr(item, "item_type_type")
+
+        Dim checkedInValue As Integer
+        Dim checkedInTurnstile As String
+
+        If Not String.IsNullOrEmpty(checkedInAt) Then
+            If Not String.IsNullOrEmpty(checkedOutAt) Then
+                checkedInValue = 0
+                checkedInTurnstile = ""
+            Else
+                checkedInValue = 1
+                checkedInTurnstile = "notset"
+            End If
+        Else
+            checkedInValue = 0
+            checkedInTurnstile = ""
+        End If
+
+        Select Case checkInUserId
+            Case "3169864" : checkedInTurnstile = "turnstile1"
+            Case "3169868" : checkedInTurnstile = "turnstile3"
+            Case "3169871" : checkedInTurnstile = "turnstile4"
+            Case "3299860" : checkedInTurnstile = "turnstile22"
+            Case "3299862" : checkedInTurnstile = "turnstile16"
+            Case "3299865" : checkedInTurnstile = "turnstile17"
+            Case "3299867" : checkedInTurnstile = "turnstileE1"
+            Case "3299868" : checkedInTurnstile = "turnstileE2"
+            Case "3299870" : checkedInTurnstile = "turnstileE3"
+            Case "3299872" : checkedInTurnstile = "turnstileE4"
+        End Select
+
+        Const sql As String =
+            "REPLACE INTO ticketco_matchsales " &
+            "(PurchaseDate, TicketCoRef, GroundArea, TicketType, EventName, QtySold, QtyCheckedIn, CheckedInDate, CheckedInOperator, ticketcotickettype, fixtureid) " &
+            "VALUES (@PurchaseDate, @TicketCoRef, @GroundArea, @TicketType, @EventName, 1, @QtyCheckedIn, @CheckedInDate, @CheckedInOperator, @ticketcotickettype, @fixtureid)"
+
+        Using cmd As New MySqlCommand(sql, con)
+            cmd.Parameters.AddWithValue("@PurchaseDate", NullIfEmpty(transactionDatestamp))
+            cmd.Parameters.AddWithValue("@TicketCoRef", refNumber)
+            cmd.Parameters.AddWithValue("@GroundArea", sectionName)
+            cmd.Parameters.AddWithValue("@TicketType", itemTypeTitle)
+            cmd.Parameters.AddWithValue("@EventName", eventName)
+            cmd.Parameters.AddWithValue("@QtyCheckedIn", checkedInValue)
+            cmd.Parameters.AddWithValue("@CheckedInDate", NullIfEmpty(checkedInAt))
+            cmd.Parameters.AddWithValue("@CheckedInOperator", checkedInTurnstile)
+            cmd.Parameters.AddWithValue("@ticketcotickettype", itemTypeType)
+            cmd.Parameters.AddWithValue("@fixtureid", fixtureid)
+            cmd.ExecuteNonQuery()
+        End Using
+    End Sub
+
+    Private Shared Function GetStr(ByVal item As JObject, ByVal name As String) As String
+        Dim tok As JToken = item(name)
+        If tok Is Nothing OrElse tok.Type = JTokenType.Null Then
+            Return ""
+        End If
+        Return tok.ToString()
+    End Function
+
+    Private Shared Function NullIfEmpty(ByVal value As String) As Object
+        If String.IsNullOrEmpty(value) Then
+            Return DBNull.Value
+        End If
+        Return value
+    End Function
+
+End Class
+
+
+' =============================================================================
+'  TicketcoPoller
+'  ---------------------------------------------------------------------------
+'  Application-scoped background loop. One timer, one fixture at a time. Each
+'  tick imports from the API and then broadcasts the refreshed snapshot, in
+'  that order, so a dashboard update always reflects a completed import.
+'
+'  A re-entrancy guard means a slow import can never overlap the next tick.
+' =============================================================================
+Public NotInheritable Class TicketcoPoller
+
+    Private Sub New()
+    End Sub
+
+    Private Shared ReadOnly SyncRoot As New Object()
+    Private Shared _timer As Timer
+    Private Shared _eventId As String = ""
+    Private Shared _running As Integer = 0            ' 0 = idle, 1 = a tick is in progress
+    Public Shared Property LastError As String = ""
+    Public Shared Property LastRunUtc As DateTime = DateTime.MinValue
+
+    ''' <summary>The fixture currently being polled (falls back to config default).</summary>
+    Public Shared ReadOnly Property ActiveEventId As String
+        Get
+            If Not String.IsNullOrEmpty(_eventId) Then
+                Return _eventId
+            End If
+            Dim cfg As String = ConfigurationManager.AppSettings("TicketcoActiveEventId")
+            If Not String.IsNullOrEmpty(cfg) Then
+                Return cfg
+            End If
+            Return "924084"
+        End Get
+    End Property
+
+    ''' <summary>Start (or retarget) the poll loop.</summary>
+    Public Shared Sub Start(ByVal eventid As String, ByVal intervalSeconds As Integer)
+        If intervalSeconds < 5 Then intervalSeconds = 5   ' don't hammer the API
+        SyncLock SyncRoot
+            If Not String.IsNullOrEmpty(eventid) Then
+                _eventId = eventid
+            End If
+            If _timer Is Nothing Then
+                _timer = New Timer(AddressOf TimerCallback, Nothing, 0, intervalSeconds * 1000)
+            Else
+                _timer.Change(0, intervalSeconds * 1000)
+            End If
+        End SyncLock
+    End Sub
+
+    ''' <summary>Stop the poll loop (leaves the last snapshot on screen).</summary>
+    Public Shared Sub [Stop]()
+        SyncLock SyncRoot
+            If _timer IsNot Nothing Then
+                _timer.Dispose()
+                _timer = Nothing
+            End If
+        End SyncLock
+    End Sub
+
+    ''' <summary>
+    ''' Optionally start the loop at application startup, driven purely by
+    ''' Web.config (TicketcoAutoStart / TicketcoActiveEventId / TicketcoPollSeconds).
+    ''' </summary>
+    Public Shared Sub AutoStartFromConfig()
+        Dim autoStart As Boolean
+        Boolean.TryParse(ConfigurationManager.AppSettings("TicketcoAutoStart"), autoStart)
+        If Not autoStart Then Return
+
+        Dim eventid As String = ConfigurationManager.AppSettings("TicketcoActiveEventId")
+        Dim seconds As Integer
+        If Not Integer.TryParse(ConfigurationManager.AppSettings("TicketcoPollSeconds"), seconds) Then
+            seconds = 30
+        End If
+        Start(eventid, seconds)
+    End Sub
+
+    Private Shared Sub TimerCallback(ByVal state As Object)
+        ' Skip this tick if the previous one is still running.
+        If Interlocked.CompareExchange(_running, 1, 0) <> 0 Then
+            Return
+        End If
+        Try
+            Tick()
+        Finally
+            Interlocked.Exchange(_running, 0)
+        End Try
+    End Sub
+
+    ' The single place where import and push happen together, in order.
+    Private Shared Sub Tick()
+        Dim eventid As String = ActiveEventId
+        Try
+            TicketcoImporter.FetchAndStore(eventid)
+            LastError = ""
+        Catch ex As Exception
+            ' Import failed -- still broadcast so the page shows the last known
+            ' figures plus the error, rather than going stale silently.
+            LastError = ex.Message
+        End Try
+
+        LastRunUtc = DateTime.UtcNow
+
+        Try
+            Dim hub As New ChatHubticketco()
+            hub.PopulateDataTable(eventid)
+        Catch
+            ' Broadcast failures are swallowed; the next tick will retry.
+        End Try
+    End Sub
 
 End Class

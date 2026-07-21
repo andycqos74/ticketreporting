@@ -561,45 +561,45 @@ body {
             };
 
 
-            //reconnect connection
+            // ----------------------------------------------------------------
+            //  Connection lifecycle.
+            //
+            //  This page is now a pure RECEIVER. The server-side TicketcoPoller
+            //  imports from the TicketCo API and broadcasts on its own timer, so
+            //  the dashboard never has to poll. On (re)connect we ask the server
+            //  once for the current figures (populateDataTable) so the screen
+            //  paints immediately instead of waiting for the next poll tick.
+            // ----------------------------------------------------------------
+
+            function requestInitialPaint() {
+                // Cheap DB read + broadcast; does NOT hit the TicketCo API.
+                chat.server.populateDataTable('').fail(function (err) {
+                    console.log("populateDataTable failed", err);
+                });
+            }
+
+            function connect() {
+                $.connection.hub.start()
+                    .done(function () {
+                        console.log("connected");
+                        requestInitialPaint();
+                    })
+                    .fail(function () {
+                        console.log("connect failed, retrying in 5s");
+                        setTimeout(connect, 5000);
+                    });
+            }
+
+            // Show the operator when the feed has dropped rather than silently
+            // leaving stale numbers on screen.
             $.connection.hub.disconnected(function () {
                 console.log("disconnected");
-                setTimeout(function () {
-                    $.connection.hub.start();
-                }, 5000); // Restart connection after 5 seconds.
-                console.log("reconnected");
+                $("#lastupdate").text("Reconnecting…");
+                setTimeout(connect, 5000);
             });
 
-            $.connection.hub.start().fail(function () {
-                console.log("disconnected");
-                setTimeout(function () {
-                    $.connection.hub.start();
-                }, 5000); // Restart connection after 5 seconds.
-                console.log("reconnected");
-            });
+            connect();
 
-
-           
-            $.connection.hub.start().done(function () {
-
-
-             //   chat.server.importJSON();
-
-               chat.server.populateDataTable('');
-
-                   
-
-
-
-              
-                });
-
-          
-
-
-
-
-           
         });
 
     </script>

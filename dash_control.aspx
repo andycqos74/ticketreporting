@@ -205,42 +205,44 @@
                 ////////    $('#message').val('').focus();
                 ////////});
 
-                $("#btnstart").click(function () {
-                    //stop normal button event
-                    event.stopPropagation();
-                    event.stopImmediatePropagation();
-                    event.preventDefault();
-                    var updateInterval = $("#updateInterval").val() * 1000;
-
-                  //  console.log(updateInterval);
-
-                    updateData();
-
-                    myInterval = setInterval(updateData, updateInterval);
-
-
-
-                });
-
-                $("#btnstop").click(function () {
-                    //stop normal button event
+                // Start now tells the SERVER to run its own poll loop
+                // (API import + broadcast) for this fixture. Once started the
+                // loop lives in the web app, so this browser tab can be closed.
+                $("#btnstart").click(function (event) {
                     event.stopPropagation();
                     event.stopImmediatePropagation();
                     event.preventDefault();
 
-                   clearInterval(myInterval);
+                    var fixtureId = $.trim($("#fixtureid").val());
+                    var interval = parseInt($("#updateInterval").val(), 10) || 30;
 
+                    if (!fixtureId) {
+                        $("#log").text("Enter a Fixture ID first.");
+                        return;
+                    }
 
-
+                    chat.server.startPolling(fixtureId, interval)
+                        .done(function () {
+                            $("#log").text("Server polling started for fixture " + fixtureId + " every " + interval + "s.");
+                        })
+                        .fail(function (e) {
+                            $("#log").text("Start failed: " + e);
+                        });
                 });
 
-                function updateData() {
-            /*        $("#log").text(Math.random());*/
-                 //   console.log(Math.random());
-                    chat.server.importJSON();
-                  //  chat.server.populateDataTable('');  *temp commented out to test php run
+                $("#btnstop").click(function (event) {
+                    event.stopPropagation();
+                    event.stopImmediatePropagation();
+                    event.preventDefault();
 
-                }
+                    chat.server.stopPolling()
+                        .done(function () {
+                            $("#log").text("Server polling stopped.");
+                        })
+                        .fail(function (e) {
+                            $("#log").text("Stop failed: " + e);
+                        });
+                });
 
 
               
