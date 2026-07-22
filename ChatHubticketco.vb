@@ -138,8 +138,8 @@ Public Class ChatHubticketco
         Dim OakbankSold As String = 0
         Dim AllSold As String = 0
         Dim AllCheckedIn As String = 0
-        Dim OtherSold As String = 0
-        Dim OtherCheckedIn As String = 0
+        Dim OtherBucketSold As String = 0
+        Dim OtherBucketCheckedIn As String = 0
 
         Dim fixturename As String
 
@@ -214,15 +214,15 @@ Public Class ChatHubticketco
                             OakbankSold = dt.Rows(0)("OakbankSold").ToString
                             AllSold = dt.Rows(0)("AllSold").ToString
                             AllCheckedIn = dt.Rows(0)("AllCheckedIn").ToString
-                            OtherSold = dt.Rows(0)("OtherSold").ToString
-                            OtherCheckedIn = dt.Rows(0)("OtherCheckedIn").ToString
+                            OtherBucketSold = dt.Rows(0)("OtherBucketSold").ToString
+                            OtherBucketCheckedIn = dt.Rows(0)("OtherBucketCheckedIn").ToString
 
                             ' Reported attendance = online sold + season checked in + walk-ups checked in
                             ' + comps checked in + other sold
                             ReportedCrowd = CInt(OnlineSold) + CInt(SeasonTicketsCheckedIn) + CInt(WalkUpCheckedIn) + CInt(CompsCheckedIn) + CInt(other)
 
                             Dim hubContext = GlobalHost.ConnectionManager.GetHubContext(Of ChatHubticketco)()
-                            hubContext.Clients.All.broadcastMessage(TotalCheckedIn, WalkUpCheckedIn, OnlineCheckedIn, OnlineSold, SeasonTicketsCheckedIn, AwaySold, HomeSold, AwayCheckedIn, HomeCheckedIn, BDS1CheckedIn, BDS2CheckedIn, BDS3CheckedIn, BDS4CheckedIn, BDS5CheckedIn, BDS7CheckedIn, BDS8CheckedIn, BDS9CheckedIn, OakbankCheckedIn, TerreglesCheckedIn, Alpha1CheckedIn, Alpha2CheckedIn, Alpha3CheckedIn, Alpha4CheckedIn, AlphaTS1, AlphaTS2, EncTS1, TerraceTS1, BDSTS1, BDSTS2, "Last Update : " & DateTime.Now.ToString(" HH:mm:ss"), BDS6CheckedIn, ReportedCrowd, other, CompsCheckedIn, fixturename, "OK", SeasonTicketsSold, WalkUpSold, BDS1Sold, BDS2Sold, BDS3Sold, BDS4Sold, BDS5Sold, BDS6Sold, BDS7Sold, BDS8Sold, BDS9Sold, Alpha1Sold, Alpha2Sold, Alpha3Sold, Alpha4Sold, OakbankSold, AllSold, AllCheckedIn, OtherSold, OtherCheckedIn)
+                            hubContext.Clients.All.broadcastMessage(TotalCheckedIn, WalkUpCheckedIn, OnlineCheckedIn, OnlineSold, SeasonTicketsCheckedIn, AwaySold, HomeSold, AwayCheckedIn, HomeCheckedIn, BDS1CheckedIn, BDS2CheckedIn, BDS3CheckedIn, BDS4CheckedIn, BDS5CheckedIn, BDS7CheckedIn, BDS8CheckedIn, BDS9CheckedIn, OakbankCheckedIn, TerreglesCheckedIn, Alpha1CheckedIn, Alpha2CheckedIn, Alpha3CheckedIn, Alpha4CheckedIn, AlphaTS1, AlphaTS2, EncTS1, TerraceTS1, BDSTS1, BDSTS2, "Last Update : " & DateTime.Now.ToString(" HH:mm:ss"), BDS6CheckedIn, ReportedCrowd, other, CompsCheckedIn, fixturename, "OK", SeasonTicketsSold, WalkUpSold, BDS1Sold, BDS2Sold, BDS3Sold, BDS4Sold, BDS5Sold, BDS6Sold, BDS7Sold, BDS8Sold, BDS9Sold, Alpha1Sold, Alpha2Sold, Alpha3Sold, Alpha4Sold, OakbankSold, AllSold, AllCheckedIn, OtherBucketSold, OtherBucketCheckedIn)
 
                         End Using
                     End Using

@@ -404,7 +404,7 @@
             var allSold = num(d.AllSold);
             // "other" = explicit count from the view: not online/season/walk-up
             // (comp / carer / explicit "other" / untyped ticket types)
-            var otherSold = num(d.OtherSold), otherIn = num(d.OtherCheckedIn);
+            var otherSold = num(d.OtherBucketSold), otherIn = num(d.OtherBucketCheckedIn);
 
             setText("fixturename", d.fixturename || "");
             setText("lastupdate", d.lastupdate || "");
@@ -488,7 +488,7 @@
         $(function () {
             var chat = $.connection.chatHubticketco;
 
-            chat.client.broadcastMessage = function (TotalCheckedIn, WalkUpCheckedIn, OnlineCheckedIn, OnlineSold, SeasonTicketsCheckedIn, AwaySold, HomeSold, awaycheckedin, homecheckedin, BDS1CheckedIn, BDS2CheckedIn, BDS3CheckedIn, BDS4CheckedIn, BDS5CheckedIn, BDS7CheckedIn, BDS8CheckedIn, BDS9CheckedIn, OakbankCheckedIn, TerreglesCheckedIn, Alpha1CheckedIn, Alpha2CheckedIn, Alpha3CheckedIn, Alpha4CheckedIn, AlphaTS1, AlphaTS2, EncTS1, TerraceTS1, BDSTS1, BDSTS2, lastupdate, BDS6CheckedIn, ReportedCrowd, other, CompsCheckedIn, fixturename, errormsg, SeasonTicketsSold, WalkUpSold, BDS1Sold, BDS2Sold, BDS3Sold, BDS4Sold, BDS5Sold, BDS6Sold, BDS7Sold, BDS8Sold, BDS9Sold, Alpha1Sold, Alpha2Sold, Alpha3Sold, Alpha4Sold, OakbankSold, AllSold, AllCheckedIn, OtherSold, OtherCheckedIn) {
+            chat.client.broadcastMessage = function (TotalCheckedIn, WalkUpCheckedIn, OnlineCheckedIn, OnlineSold, SeasonTicketsCheckedIn, AwaySold, HomeSold, awaycheckedin, homecheckedin, BDS1CheckedIn, BDS2CheckedIn, BDS3CheckedIn, BDS4CheckedIn, BDS5CheckedIn, BDS7CheckedIn, BDS8CheckedIn, BDS9CheckedIn, OakbankCheckedIn, TerreglesCheckedIn, Alpha1CheckedIn, Alpha2CheckedIn, Alpha3CheckedIn, Alpha4CheckedIn, AlphaTS1, AlphaTS2, EncTS1, TerraceTS1, BDSTS1, BDSTS2, lastupdate, BDS6CheckedIn, ReportedCrowd, other, CompsCheckedIn, fixturename, errormsg, SeasonTicketsSold, WalkUpSold, BDS1Sold, BDS2Sold, BDS3Sold, BDS4Sold, BDS5Sold, BDS6Sold, BDS7Sold, BDS8Sold, BDS9Sold, Alpha1Sold, Alpha2Sold, Alpha3Sold, Alpha4Sold, OakbankSold, AllSold, AllCheckedIn, OtherBucketSold, OtherBucketCheckedIn) {
                 render({
                     TotalCheckedIn: TotalCheckedIn, WalkUpCheckedIn: WalkUpCheckedIn, OnlineCheckedIn: OnlineCheckedIn,
                     OnlineSold: OnlineSold, SeasonTicketsCheckedIn: SeasonTicketsCheckedIn, AwaySold: AwaySold, HomeSold: HomeSold,
@@ -506,7 +506,7 @@
                     BDS6Sold: BDS6Sold, BDS7Sold: BDS7Sold, BDS8Sold: BDS8Sold, BDS9Sold: BDS9Sold,
                     Alpha1Sold: Alpha1Sold, Alpha2Sold: Alpha2Sold, Alpha3Sold: Alpha3Sold, Alpha4Sold: Alpha4Sold,
                     OakbankSold: OakbankSold, AllSold: AllSold, AllCheckedIn: AllCheckedIn,
-                    OtherSold: OtherSold, OtherCheckedIn: OtherCheckedIn
+                    OtherBucketSold: OtherBucketSold, OtherBucketCheckedIn: OtherBucketCheckedIn
                 });
             };
 
