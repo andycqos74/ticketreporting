@@ -397,13 +397,14 @@
 
         // ---- render one feed snapshot -------------------------------------
         function render(d) {
-            // ticket types
+            // ---- ticket-type buckets (sold = SUM(QtySold) rows; in = checked in) ----
             var onlineSold = num(d.OnlineSold), onlineIn = num(d.OnlineCheckedIn);
-            var seasonIn = num(d.SeasonTicketsCheckedIn), seasonIssued = null;      // MISSING in feed
-            var walkIn = num(d.WalkUpCheckedIn), walkSold = walkIn;                 // walk-ups sold at gate = checked in
-            var otherSold = num(d.other);                                           // othersold from view
-            // "other" checked-in = everyone not already split out (incl. comps)
-            var otherIn = Math.max(0, num(d.TotalCheckedIn) - onlineIn - seasonIn - walkIn);
+            var seasonIn = num(d.SeasonTicketsCheckedIn), seasonIssued = num(d.SeasonTicketsSold);
+            var walkIn = num(d.WalkUpCheckedIn), walkSold = num(d.WalkUpSold);
+            var allSold = num(d.AllSold), allIn = num(d.AllCheckedIn);
+            // "other" = residual bucket: everything not online/season/walk-up (incl. comps)
+            var otherSold = Math.max(0, allSold - onlineSold - seasonIssued - walkSold);
+            var otherIn = Math.max(0, allIn - onlineIn - seasonIn - walkIn);
 
             setText("fixturename", d.fixturename || "");
             setText("lastupdate", d.lastupdate || "");
@@ -426,59 +427,60 @@
             setText("otherPct", pOther === null ? "—" : pOther + "% in");
             setBar("online", pOnline); setBar("season", pSeason); setBar("walkup", pWalk); setBar("other", pOther);
 
-            // overall attendance: totalSold needs season issued + walk-up sold (both MISSING)
-            var totalSold = (seasonIssued === null || walkSold === null)
-                ? null : (onlineSold + seasonIssued + walkSold + otherSold);
+            // ---- attendance hero: totalSold = every ticket out ----
+            var totalSold = allSold;
             var totalIn = num(d.TotalCheckedIn);
             var pOverall = pct(totalIn, totalSold);
             setText("totalSold", fmt(totalSold));
             setText("overallPct", pOverall === null ? "—" : pOverall);
             setBar("overall", pOverall);
 
-            // home v away (online)
+            // ---- home v away (online) ----
             var homeIn = num(d.homecheckedin), homeSold = num(d.HomeSold);
             var awayIn = num(d.awaycheckedin), awaySold = num(d.AwaySold);
             setText("homecheckedin", fmt(homeIn)); setText("HomeSold", fmt(homeSold));
             setText("awaycheckedin", fmt(awayIn)); setText("AwaySold", fmt(awaySold));
             setBar("home", pct(homeIn, homeSold)); setBar("away", pct(awayIn, awaySold));
 
-            // gates (turnstiles)
+            // ---- gates (turnstiles) ----
             ["TerraceTS1", "BDSTS1", "BDSTS2", "EncTS1", "AlphaTS1", "AlphaTS2"].forEach(function (g) {
                 setText(g, fmt(num(d[g])));
             });
 
-            // stadium sections + heat
-            var bdsIns = [], alphaIns = [], i, v;
-            var oakIn = num(d.OakbankCheckedIn);
-            for (i = 1; i <= 9; i++) { bdsIns.push(num(d["BDS" + i + "CheckedIn"])); }
-            for (i = 1; i <= 4; i++) { alphaIns.push(num(d["Alpha" + i + "CheckedIn"])); }
-            var maxIn = Math.max(1, oakIn, walkIn, Math.max.apply(null, bdsIns), Math.max.apply(null, alphaIns));
+            // ---- stadium sections + heat (real checked-in vs sold) ----
+            var i, vin, vsold, bdsInSum = 0, bdsSoldSum = 0, alphaInSum = 0, alphaSoldSum = 0;
+            var oakIn = num(d.OakbankCheckedIn), oakSold = num(d.OakbankSold);
+            // busiest section, for the fallback shade when a section has no sold figure
+            var maxIn = Math.max(1, oakIn, walkIn);
+            for (i = 1; i <= 9; i++) { maxIn = Math.max(maxIn, num(d["BDS" + i + "CheckedIn"])); }
+            for (i = 1; i <= 4; i++) { maxIn = Math.max(maxIn, num(d["Alpha" + i + "CheckedIn"])); }
 
             for (i = 1; i <= 9; i++) {
-                v = bdsIns[i - 1];
-                setText("bdsIn" + i, fmt(v));
-                setText("bdsSold" + i, "of —");        // per-section sold MISSING
-                setHeat("bds" + i, v, null, maxIn);    // fallback heat (in vs busiest section)
+                vin = num(d["BDS" + i + "CheckedIn"]); vsold = num(d["BDS" + i + "Sold"]);
+                bdsInSum += vin; bdsSoldSum += vsold;
+                setText("bdsIn" + i, fmt(vin));
+                setText("bdsSold" + i, "of " + fmt(vsold));
+                setHeat("bds" + i, vin, vsold, maxIn);
             }
             for (i = 1; i <= 4; i++) {
-                v = alphaIns[i - 1];
-                setText("alphaIn" + i, fmt(v));
-                setText("alphaSold" + i, "of —");
-                setHeat("alpha" + i, v, null, maxIn);
+                vin = num(d["Alpha" + i + "CheckedIn"]); vsold = num(d["Alpha" + i + "Sold"]);
+                alphaInSum += vin; alphaSoldSum += vsold;
+                setText("alphaIn" + i, fmt(vin));
+                setText("alphaSold" + i, "of " + fmt(vsold));
+                setHeat("alpha" + i, vin, vsold, maxIn);
             }
-            setText("OakbankCheckedIn", fmt(oakIn)); setText("oakSold", "of —");
-            setHeat("oak", oakIn, null, maxIn);
+            setText("OakbankCheckedIn", fmt(oakIn)); setText("oakSold", "of " + fmt(oakSold));
+            setHeat("oak", oakIn, oakSold, maxIn);
+            setText("WalkUpCheckedIn", fmt(walkIn)); setText("wupSold", "of " + fmt(walkSold));
             setHeat("wup", walkIn, walkSold, maxIn);
-            setText("wupSold", "of " + fmt(walkSold));
 
-            // by stand (checked-in sums; per-stand SOLD MISSING)
-            var bdsSum = bdsIns.reduce(function (a, b) { return a + b; }, 0);
-            var alphaSum = alphaIns.reduce(function (a, b) { return a + b; }, 0);
-            setText("bdsIn", fmt(bdsSum)); setText("bdsSold", "—");
-            setText("alphaIn", fmt(alphaSum)); setText("alphaSold", "—");
-            setText("oakSold2", "—"); setText("wupSold2", fmt(walkSold));
-            // per-stand bars need sold totals (MISSING) except walk-ups (= checked in)
-            setBar("stBds", null); setBar("stAlpha", null); setBar("stOak", null);
+            // ---- by stand (sums of the stand's sections) ----
+            setText("bdsIn", fmt(bdsInSum)); setText("bdsSold", fmt(bdsSoldSum));
+            setText("alphaIn", fmt(alphaInSum)); setText("alphaSold", fmt(alphaSoldSum));
+            setText("oakSold2", fmt(oakSold)); setText("wupSold2", fmt(walkSold));
+            setBar("stBds", pct(bdsInSum, bdsSoldSum));
+            setBar("stAlpha", pct(alphaInSum, alphaSoldSum));
+            setBar("stOak", pct(oakIn, oakSold));
             setBar("stWalk", pct(walkIn, walkSold));
         }
 
@@ -486,7 +488,7 @@
         $(function () {
             var chat = $.connection.chatHubticketco;
 
-            chat.client.broadcastMessage = function (TotalCheckedIn, WalkUpCheckedIn, OnlineCheckedIn, OnlineSold, SeasonTicketsCheckedIn, AwaySold, HomeSold, awaycheckedin, homecheckedin, BDS1CheckedIn, BDS2CheckedIn, BDS3CheckedIn, BDS4CheckedIn, BDS5CheckedIn, BDS7CheckedIn, BDS8CheckedIn, BDS9CheckedIn, OakbankCheckedIn, TerreglesCheckedIn, Alpha1CheckedIn, Alpha2CheckedIn, Alpha3CheckedIn, Alpha4CheckedIn, AlphaTS1, AlphaTS2, EncTS1, TerraceTS1, BDSTS1, BDSTS2, lastupdate, BDS6CheckedIn, ReportedCrowd, other, CompsCheckedIn, fixturename, errormsg) {
+            chat.client.broadcastMessage = function (TotalCheckedIn, WalkUpCheckedIn, OnlineCheckedIn, OnlineSold, SeasonTicketsCheckedIn, AwaySold, HomeSold, awaycheckedin, homecheckedin, BDS1CheckedIn, BDS2CheckedIn, BDS3CheckedIn, BDS4CheckedIn, BDS5CheckedIn, BDS7CheckedIn, BDS8CheckedIn, BDS9CheckedIn, OakbankCheckedIn, TerreglesCheckedIn, Alpha1CheckedIn, Alpha2CheckedIn, Alpha3CheckedIn, Alpha4CheckedIn, AlphaTS1, AlphaTS2, EncTS1, TerraceTS1, BDSTS1, BDSTS2, lastupdate, BDS6CheckedIn, ReportedCrowd, other, CompsCheckedIn, fixturename, errormsg, SeasonTicketsSold, WalkUpSold, BDS1Sold, BDS2Sold, BDS3Sold, BDS4Sold, BDS5Sold, BDS6Sold, BDS7Sold, BDS8Sold, BDS9Sold, Alpha1Sold, Alpha2Sold, Alpha3Sold, Alpha4Sold, OakbankSold, AllSold, AllCheckedIn) {
                 render({
                     TotalCheckedIn: TotalCheckedIn, WalkUpCheckedIn: WalkUpCheckedIn, OnlineCheckedIn: OnlineCheckedIn,
                     OnlineSold: OnlineSold, SeasonTicketsCheckedIn: SeasonTicketsCheckedIn, AwaySold: AwaySold, HomeSold: HomeSold,
@@ -498,7 +500,12 @@
                     Alpha1CheckedIn: Alpha1CheckedIn, Alpha2CheckedIn: Alpha2CheckedIn, Alpha3CheckedIn: Alpha3CheckedIn, Alpha4CheckedIn: Alpha4CheckedIn,
                     AlphaTS1: AlphaTS1, AlphaTS2: AlphaTS2, EncTS1: EncTS1, TerraceTS1: TerraceTS1, BDSTS1: BDSTS1, BDSTS2: BDSTS2,
                     lastupdate: lastupdate, ReportedCrowd: ReportedCrowd, other: other, CompsCheckedIn: CompsCheckedIn,
-                    fixturename: fixturename, errormsg: errormsg
+                    fixturename: fixturename, errormsg: errormsg,
+                    SeasonTicketsSold: SeasonTicketsSold, WalkUpSold: WalkUpSold,
+                    BDS1Sold: BDS1Sold, BDS2Sold: BDS2Sold, BDS3Sold: BDS3Sold, BDS4Sold: BDS4Sold, BDS5Sold: BDS5Sold,
+                    BDS6Sold: BDS6Sold, BDS7Sold: BDS7Sold, BDS8Sold: BDS8Sold, BDS9Sold: BDS9Sold,
+                    Alpha1Sold: Alpha1Sold, Alpha2Sold: Alpha2Sold, Alpha3Sold: Alpha3Sold, Alpha4Sold: Alpha4Sold,
+                    OakbankSold: OakbankSold, AllSold: AllSold, AllCheckedIn: AllCheckedIn
                 });
             };
 

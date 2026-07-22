@@ -119,6 +119,26 @@ Public Class ChatHubticketco
         Dim other As String = 0
         Dim CompsCheckedIn As String = 0
 
+        ' Sold / issued counts (rows per category) added for the redesigned dashboard.
+        Dim SeasonTicketsSold As String = 0
+        Dim WalkUpSold As String = 0
+        Dim BDS1Sold As String = 0
+        Dim BDS2Sold As String = 0
+        Dim BDS3Sold As String = 0
+        Dim BDS4Sold As String = 0
+        Dim BDS5Sold As String = 0
+        Dim BDS6Sold As String = 0
+        Dim BDS7Sold As String = 0
+        Dim BDS8Sold As String = 0
+        Dim BDS9Sold As String = 0
+        Dim Alpha1Sold As String = 0
+        Dim Alpha2Sold As String = 0
+        Dim Alpha3Sold As String = 0
+        Dim Alpha4Sold As String = 0
+        Dim OakbankSold As String = 0
+        Dim AllSold As String = 0
+        Dim AllCheckedIn As String = 0
+
         Dim fixturename As String
 
         sqlstring = "Select * From qosfctickets.vw_ticketsalesreport;"
@@ -174,10 +194,29 @@ Public Class ChatHubticketco
                             BDSTS1 = dt.Rows(0)("BDSTS1").ToString
                             BDSTS2 = dt.Rows(0)("BDSTS2").ToString
 
+                            SeasonTicketsSold = dt.Rows(0)("SeasonTicketsSold").ToString
+                            WalkUpSold = dt.Rows(0)("WalkUpSold").ToString
+                            BDS1Sold = dt.Rows(0)("BDS1Sold").ToString
+                            BDS2Sold = dt.Rows(0)("BDS2Sold").ToString
+                            BDS3Sold = dt.Rows(0)("BDS3Sold").ToString
+                            BDS4Sold = dt.Rows(0)("BDS4Sold").ToString
+                            BDS5Sold = dt.Rows(0)("BDS5Sold").ToString
+                            BDS6Sold = dt.Rows(0)("BDS6Sold").ToString
+                            BDS7Sold = dt.Rows(0)("BDS7Sold").ToString
+                            BDS8Sold = dt.Rows(0)("BDS8Sold").ToString
+                            BDS9Sold = dt.Rows(0)("BDS9Sold").ToString
+                            Alpha1Sold = dt.Rows(0)("Alpha1Sold").ToString
+                            Alpha2Sold = dt.Rows(0)("Alpha2Sold").ToString
+                            Alpha3Sold = dt.Rows(0)("Alpha3Sold").ToString
+                            Alpha4Sold = dt.Rows(0)("Alpha4Sold").ToString
+                            OakbankSold = dt.Rows(0)("OakbankSold").ToString
+                            AllSold = dt.Rows(0)("AllSold").ToString
+                            AllCheckedIn = dt.Rows(0)("AllCheckedIn").ToString
+
                             ReportedCrowd = CInt(OnlineSold) + CInt(SeasonTicketsCheckedIn) + CInt(WalkUpCheckedIn) + CInt(other)
 
                             Dim hubContext = GlobalHost.ConnectionManager.GetHubContext(Of ChatHubticketco)()
-                            hubContext.Clients.All.broadcastMessage(TotalCheckedIn, WalkUpCheckedIn, OnlineCheckedIn, OnlineSold, SeasonTicketsCheckedIn, AwaySold, HomeSold, AwayCheckedIn, HomeCheckedIn, BDS1CheckedIn, BDS2CheckedIn, BDS3CheckedIn, BDS4CheckedIn, BDS5CheckedIn, BDS7CheckedIn, BDS8CheckedIn, BDS9CheckedIn, OakbankCheckedIn, TerreglesCheckedIn, Alpha1CheckedIn, Alpha2CheckedIn, Alpha3CheckedIn, Alpha4CheckedIn, AlphaTS1, AlphaTS2, EncTS1, TerraceTS1, BDSTS1, BDSTS2, "Last Update : " & DateTime.Now.ToString(" HH:mm:ss"), BDS6CheckedIn, ReportedCrowd, other, CompsCheckedIn, fixturename, "OK")
+                            hubContext.Clients.All.broadcastMessage(TotalCheckedIn, WalkUpCheckedIn, OnlineCheckedIn, OnlineSold, SeasonTicketsCheckedIn, AwaySold, HomeSold, AwayCheckedIn, HomeCheckedIn, BDS1CheckedIn, BDS2CheckedIn, BDS3CheckedIn, BDS4CheckedIn, BDS5CheckedIn, BDS7CheckedIn, BDS8CheckedIn, BDS9CheckedIn, OakbankCheckedIn, TerreglesCheckedIn, Alpha1CheckedIn, Alpha2CheckedIn, Alpha3CheckedIn, Alpha4CheckedIn, AlphaTS1, AlphaTS2, EncTS1, TerraceTS1, BDSTS1, BDSTS2, "Last Update : " & DateTime.Now.ToString(" HH:mm:ss"), BDS6CheckedIn, ReportedCrowd, other, CompsCheckedIn, fixturename, "OK", SeasonTicketsSold, WalkUpSold, BDS1Sold, BDS2Sold, BDS3Sold, BDS4Sold, BDS5Sold, BDS6Sold, BDS7Sold, BDS8Sold, BDS9Sold, Alpha1Sold, Alpha2Sold, Alpha3Sold, Alpha4Sold, OakbankSold, AllSold, AllCheckedIn)
 
                         End Using
                     End Using
@@ -187,7 +226,7 @@ Public Class ChatHubticketco
         Catch ex As Exception
 
             Dim hubContext = GlobalHost.ConnectionManager.GetHubContext(Of ChatHubticketco)()
-            hubContext.Clients.All.broadcastMessage(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ex.Message)
+            hubContext.Clients.All.broadcastMessage(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ex.Message, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
         End Try
 
     End Sub
