@@ -401,6 +401,7 @@
             var onlineSold = num(d.OnlineSold), onlineIn = num(d.OnlineCheckedIn);
             var seasonIn = num(d.SeasonTicketsCheckedIn), seasonIssued = num(d.SeasonTicketsSold);
             var walkIn = num(d.WalkUpCheckedIn), walkSold = walkIn;   // walk-ups sold at gate = checked in
+            var homeSold = num(d.HomeSold), awaySold = num(d.AwaySold);   // AwaySold may be a manual override
             var allSold = num(d.AllSold);
             // "other" = explicit count from the view: not online/season/walk-up
             // (comp / carer / explicit "other" / untyped ticket types)
@@ -427,17 +428,18 @@
             setText("otherPct", pOther === null ? "\u2014" : pOther + "% in");
             setBar("online", pOnline); setBar("season", pSeason); setBar("walkup", pWalk); setBar("other", pOther);
 
-            // ---- attendance hero: totalSold = every ticket out ----
-            var totalSold = allSold;
+            // ---- attendance hero ----
+            // Sold total = home + away + walk-ups checked in + other, so the
+            // manual AwaySold override flows through (AllSold would not reflect it).
+            var totalSold = homeSold + awaySold + walkIn + otherSold;
             var totalIn = num(d.TotalCheckedIn);
             var pOverall = pct(totalIn, totalSold);
             setText("totalSold", fmt(totalSold));
             setText("overallPct", pOverall === null ? "\u2014" : pOverall);
             setBar("overall", pOverall);
 
-            // ---- home v away (online) ----
-            var homeIn = num(d.homecheckedin), homeSold = num(d.HomeSold);
-            var awayIn = num(d.awaycheckedin), awaySold = num(d.AwaySold);
+            // ---- home v away (online) ----  (homeSold/awaySold defined above)
+            var homeIn = num(d.homecheckedin), awayIn = num(d.awaycheckedin);
             setText("homecheckedin", fmt(homeIn)); setText("HomeSold", fmt(homeSold));
             setText("awaycheckedin", fmt(awayIn)); setText("AwaySold", fmt(awaySold));
             setBar("home", pct(homeIn, homeSold)); setBar("away", pct(awayIn, awaySold));
