@@ -84,13 +84,13 @@
         <!-- header -->
         <div class="hdr">
           <div>
-            <div class="eyebrow" style="font-size:12px;margin-bottom:4px;">Live ticket report · Palmerston Park</div>
-            <div class="fx num tick" data-f="fixturename">Loading …</div>
+            <div class="eyebrow" style="font-size:12px;margin-bottom:4px;">Live ticket report &middot; Palmerston Park</div>
+            <div class="fx num tick" data-f="fixturename">Loading &hellip;</div>
           </div>
           <div class="live">
             <span class="dot"></span>
             <span style="font-weight:600;font-size:14px;">LIVE</span>
-            <span class="muted tick" style="font-weight:500;font-size:14px;" data-f="lastupdate">—</span>
+            <span class="muted tick" style="font-weight:500;font-size:14px;" data-f="lastupdate">&mdash;</span>
           </div>
         </div>
 
@@ -99,12 +99,12 @@
           <div style="flex:none;">
             <div class="lab">Checked in</div>
             <div class="big num tick" data-f="TotalCheckedIn">0</div>
-            <div class="muted" style="font-weight:500;font-size:15px;">of <span class="tick" data-f="totalSold">—</span> tickets sold</div>
+            <div class="muted" style="font-weight:500;font-size:15px;">of <span class="tick" data-f="totalSold">&mdash;</span> tickets sold</div>
           </div>
           <div style="flex:1;">
             <div style="display:flex;justify-content:space-between;font-weight:600;font-size:14px;color:var(--muted);margin-bottom:8px;">
-              <span><span class="tick" data-f="overallPct">—</span>% of sold tickets are inside</span>
-              <span class="tick" data-f="totalSold">—</span>
+              <span><span class="tick" data-f="overallPct">&mdash;</span>% of sold tickets are inside</span>
+              <span class="tick" data-f="totalSold">&mdash;</span>
             </div>
             <div class="track" style="height:18px;"><i data-bar="overall" style="background:linear-gradient(90deg,var(--green-d),var(--green));"></i></div>
           </div>
@@ -118,7 +118,7 @@
         <div class="type-grid">
           <div class="card tcard">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-              <span class="tt">ONLINE</span><span class="chip tick" data-f="onlinePct">—</span>
+              <span class="tt">ONLINE</span><span class="chip tick" data-f="onlinePct">&mdash;</span>
             </div>
             <div style="display:flex;gap:24px;margin-bottom:10px;">
               <div><div class="lab" style="font-size:11px;">SOLD</div><div class="val num muted tick" data-f="OnlineSold">0</div></div>
@@ -128,27 +128,27 @@
           </div>
           <div class="card tcard">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-              <span class="tt">SEASON TICKETS</span><span class="chip tick" data-f="seasonPct">—</span>
+              <span class="tt">SEASON TICKETS</span><span class="chip tick" data-f="seasonPct">&mdash;</span>
             </div>
             <div style="display:flex;gap:24px;margin-bottom:10px;">
-              <div><div class="lab" style="font-size:11px;">ISSUED</div><div class="val num muted tick" data-f="seasonIssued">—</div></div>
+              <div><div class="lab" style="font-size:11px;">ISSUED</div><div class="val num muted tick" data-f="seasonIssued">&mdash;</div></div>
               <div><div class="lab" style="font-size:11px;">CHECKED IN</div><div class="val num tick" data-f="SeasonTicketsCheckedIn">0</div></div>
             </div>
             <div class="track"><i data-bar="season"></i></div>
           </div>
           <div class="card tcard">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-              <span class="tt">WALK-UPS</span><span class="chip tick" data-f="walkupPct">—</span>
+              <span class="tt">WALK-UPS</span><span class="chip tick" data-f="walkupPct">&mdash;</span>
             </div>
             <div style="display:flex;gap:24px;margin-bottom:10px;">
-              <div><div class="lab" style="font-size:11px;">SOLD</div><div class="val num muted tick" data-f="walkupSold">—</div></div>
+              <div><div class="lab" style="font-size:11px;">SOLD</div><div class="val num muted tick" data-f="walkupSold">&mdash;</div></div>
               <div><div class="lab" style="font-size:11px;">CHECKED IN</div><div class="val num tick" data-f="WalkUpCheckedIn">0</div></div>
             </div>
             <div class="track"><i data-bar="walkup"></i></div>
           </div>
           <div class="card tcard">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-              <span class="tt">OTHER / COMPS</span><span class="chip tick" data-f="otherPct">—</span>
+              <span class="tt">OTHER / COMPS</span><span class="chip tick" data-f="otherPct">&mdash;</span>
             </div>
             <div style="display:flex;gap:24px;margin-bottom:10px;">
               <div><div class="lab" style="font-size:11px;">SOLD</div><div class="val num muted tick" data-f="otherSold">0</div></div>
@@ -161,7 +161,7 @@
         <!-- stadium map -->
         <div class="card map">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-            <div class="mtitle num">PALMERSTON PARK — CHECKED IN BY SECTION</div>
+            <div class="mtitle num">PALMERSTON PARK &mdash; CHECKED IN BY SECTION</div>
             <div style="display:flex;align-items:center;gap:10px;font-weight:500;font-size:12px;color:var(--muted);">
               <span>empty</span>
               <span style="width:90px;height:10px;border-radius:999px;background:linear-gradient(90deg,rgba(70,192,109,.1),rgba(70,192,109,.65));"></span>
@@ -186,13 +186,13 @@
             <div style="grid-column:1;grid-row:2/5;" class="side" data-heat="oak">
               <div class="rl" style="transform:rotate(180deg);">OAKBANK SERVICES TERRACE</div>
               <div class="in num tick" data-f="OakbankCheckedIn" style="font-weight:700;font-size:28px;line-height:1;">0</div>
-              <div class="sold tick" data-f="oakSold" style="font-weight:500;font-size:12px;color:var(--dim);">of —</div>
+              <div class="sold tick" data-f="oakSold" style="font-weight:500;font-size:12px;color:var(--dim);">of &mdash;</div>
             </div>
             <!-- walkups side -->
             <div style="grid-column:3;grid-row:2/5;" class="side" data-heat="wup">
               <div class="rl">WALK-UPS</div>
               <div class="in num tick" data-f="WalkUpCheckedIn" style="font-weight:700;font-size:28px;line-height:1;">0</div>
-              <div class="sold tick" data-f="wupSold" style="font-weight:500;font-size:12px;color:var(--dim);">of —</div>
+              <div class="sold tick" data-f="wupSold" style="font-weight:500;font-size:12px;color:var(--dim);">of &mdash;</div>
             </div>
             <!-- pitch -->
             <div style="grid-column:2;grid-row:3;" class="pitch">
@@ -226,20 +226,20 @@
           <div class="card cardpad">
             <div class="num" style="font-weight:700;font-size:18px;letter-spacing:.04em;">HOME v AWAY (ONLINE SALES)</div>
             <div class="barrow">
-              <div class="cap"><span>HOME</span><span class="muted" style="font-weight:500;"><span class="tick" data-f="homecheckedin">0</span> in · <span class="tick" data-f="HomeSold">0</span> sold</span></div>
+              <div class="cap"><span>HOME</span><span class="muted" style="font-weight:500;"><span class="tick" data-f="homecheckedin">0</span> in &middot; <span class="tick" data-f="HomeSold">0</span> sold</span></div>
               <div class="track" style="height:10px;"><i data-bar="home" style="background:var(--blue);"></i></div>
             </div>
             <div class="barrow">
-              <div class="cap"><span>AWAY</span><span class="muted" style="font-weight:500;"><span class="tick" data-f="awaycheckedin">0</span> in · <span class="tick" data-f="AwaySold">0</span> sold</span></div>
+              <div class="cap"><span>AWAY</span><span class="muted" style="font-weight:500;"><span class="tick" data-f="awaycheckedin">0</span> in &middot; <span class="tick" data-f="AwaySold">0</span> sold</span></div>
               <div class="track" style="height:10px;"><i data-bar="away"></i></div>
             </div>
           </div>
           <div class="card cardpad" style="gap:10px;">
             <div class="num" style="font-weight:700;font-size:18px;letter-spacing:.04em;">BY STAND</div>
-            <div class="standrow"><span style="width:170px;font-weight:600;font-size:13px;">BDS Stand</span><div class="track" style="flex:1;"><i data-bar="stBds"></i></div><span style="width:120px;text-align:right;font-weight:500;font-size:13px;color:var(--muted);"><span class="tick" data-f="bdsIn">0</span> / <span class="tick" data-f="bdsSold">—</span></span></div>
-            <div class="standrow"><span style="width:170px;font-weight:600;font-size:13px;">Alpha Stand</span><div class="track" style="flex:1;"><i data-bar="stAlpha"></i></div><span style="width:120px;text-align:right;font-weight:500;font-size:13px;color:var(--muted);"><span class="tick" data-f="alphaIn">0</span> / <span class="tick" data-f="alphaSold">—</span></span></div>
-            <div class="standrow"><span style="width:170px;font-weight:600;font-size:13px;">Oakbank Terrace</span><div class="track" style="flex:1;"><i data-bar="stOak"></i></div><span style="width:120px;text-align:right;font-weight:500;font-size:13px;color:var(--muted);"><span class="tick" data-f="OakbankCheckedIn">0</span> / <span class="tick" data-f="oakSold2">—</span></span></div>
-            <div class="standrow"><span style="width:170px;font-weight:600;font-size:13px;">Walk-ups</span><div class="track" style="flex:1;"><i data-bar="stWalk"></i></div><span style="width:120px;text-align:right;font-weight:500;font-size:13px;color:var(--muted);"><span class="tick" data-f="WalkUpCheckedIn">0</span> / <span class="tick" data-f="wupSold2">—</span></span></div>
+            <div class="standrow"><span style="width:170px;font-weight:600;font-size:13px;">BDS Stand</span><div class="track" style="flex:1;"><i data-bar="stBds"></i></div><span style="width:120px;text-align:right;font-weight:500;font-size:13px;color:var(--muted);"><span class="tick" data-f="bdsIn">0</span> / <span class="tick" data-f="bdsSold">&mdash;</span></span></div>
+            <div class="standrow"><span style="width:170px;font-weight:600;font-size:13px;">Alpha Stand</span><div class="track" style="flex:1;"><i data-bar="stAlpha"></i></div><span style="width:120px;text-align:right;font-weight:500;font-size:13px;color:var(--muted);"><span class="tick" data-f="alphaIn">0</span> / <span class="tick" data-f="alphaSold">&mdash;</span></span></div>
+            <div class="standrow"><span style="width:170px;font-weight:600;font-size:13px;">Oakbank Terrace</span><div class="track" style="flex:1;"><i data-bar="stOak"></i></div><span style="width:120px;text-align:right;font-weight:500;font-size:13px;color:var(--muted);"><span class="tick" data-f="OakbankCheckedIn">0</span> / <span class="tick" data-f="oakSold2">&mdash;</span></span></div>
+            <div class="standrow"><span style="width:170px;font-weight:600;font-size:13px;">Walk-ups</span><div class="track" style="flex:1;"><i data-bar="stWalk"></i></div><span style="width:120px;text-align:right;font-weight:500;font-size:13px;color:var(--muted);"><span class="tick" data-f="WalkUpCheckedIn">0</span> / <span class="tick" data-f="wupSold2">&mdash;</span></span></div>
           </div>
         </div>
 
@@ -252,11 +252,11 @@
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
           <div>
             <div class="eyebrow" style="font-size:10px;">Live ticket report</div>
-            <div class="num tick" style="font-weight:700;font-size:20px;line-height:1.1;" data-f="fixturename">Loading …</div>
+            <div class="num tick" style="font-weight:700;font-size:20px;line-height:1.1;" data-f="fixturename">Loading &hellip;</div>
           </div>
           <div class="live" style="padding:6px 10px;gap:6px;flex:none;">
             <span class="dot" style="width:8px;height:8px;"></span>
-            <span class="num tick" style="font-weight:600;font-size:12px;white-space:nowrap;" data-f="lastupdateShort">—</span>
+            <span class="num tick" style="font-weight:600;font-size:12px;white-space:nowrap;" data-f="lastupdateShort">&mdash;</span>
           </div>
         </div>
 
@@ -272,7 +272,7 @@
             </div>
           </div>
           <div class="track" style="height:12px;margin-bottom:6px;"><i data-bar="overall" style="background:linear-gradient(90deg,var(--green-d),var(--green));"></i></div>
-          <div class="muted" style="font-weight:500;font-size:12px;"><span class="tick" data-f="overallPct">—</span>% of <span class="tick" data-f="totalSold">—</span> sold tickets are inside</div>
+          <div class="muted" style="font-weight:500;font-size:12px;"><span class="tick" data-f="overallPct">&mdash;</span>% of <span class="tick" data-f="totalSold">&mdash;</span> sold tickets are inside</div>
         </div>
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
@@ -283,12 +283,12 @@
           </div>
           <div class="card" style="padding:10px 12px;">
             <div style="font-weight:600;font-size:11px;letter-spacing:.06em;margin-bottom:4px;">SEASON</div>
-            <div class="num" style="font-weight:700;font-size:24px;line-height:1;"><span class="tick" data-f="SeasonTicketsCheckedIn">0</span> <span class="muted" style="font-weight:500;font-size:13px;font-family:'Barlow';">/ <span class="tick" data-f="seasonIssued">—</span></span></div>
+            <div class="num" style="font-weight:700;font-size:24px;line-height:1;"><span class="tick" data-f="SeasonTicketsCheckedIn">0</span> <span class="muted" style="font-weight:500;font-size:13px;font-family:'Barlow';">/ <span class="tick" data-f="seasonIssued">&mdash;</span></span></div>
             <div class="track" style="height:6px;margin-top:8px;"><i data-bar="season"></i></div>
           </div>
           <div class="card" style="padding:10px 12px;">
             <div style="font-weight:600;font-size:11px;letter-spacing:.06em;margin-bottom:4px;">WALK-UPS</div>
-            <div class="num" style="font-weight:700;font-size:24px;line-height:1;"><span class="tick" data-f="WalkUpCheckedIn">0</span> <span class="muted" style="font-weight:500;font-size:13px;font-family:'Barlow';">/ <span class="tick" data-f="walkupSold">—</span></span></div>
+            <div class="num" style="font-weight:700;font-size:24px;line-height:1;"><span class="tick" data-f="WalkUpCheckedIn">0</span> <span class="muted" style="font-weight:500;font-size:13px;font-family:'Barlow';">/ <span class="tick" data-f="walkupSold">&mdash;</span></span></div>
             <div class="track" style="height:6px;margin-top:8px;"><i data-bar="walkup"></i></div>
           </div>
           <div class="card" style="padding:10px 12px;">
@@ -311,11 +311,11 @@
             </div>
             <div style="grid-column:2;grid-row:3;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;" id="alphaRowM"></div>
           </div>
-          <div style="display:flex;justify-content:space-between;font-weight:600;font-size:9px;color:var(--muted);letter-spacing:.08em;margin-top:6px;"><span>OAKBANK</span><span>BDS (top) · ALPHA (bottom)</span><span>WALK-UPS</span></div>
+          <div style="display:flex;justify-content:space-between;font-weight:600;font-size:9px;color:var(--muted);letter-spacing:.08em;margin-top:6px;"><span>OAKBANK</span><span>BDS (top) &middot; ALPHA (bottom)</span><span>WALK-UPS</span></div>
         </div>
 
         <div class="card" style="padding:12px;">
-          <div class="num" style="font-weight:700;font-size:14px;letter-spacing:.04em;margin-bottom:8px;">GATES — FANS THROUGH TURNSTILES</div>
+          <div class="num" style="font-weight:700;font-size:14px;letter-spacing:.04em;margin-bottom:8px;">GATES &mdash; FANS THROUGH TURNSTILES</div>
           <div style="display:flex;flex-wrap:wrap;gap:6px;">
             <div class="gate" style="padding:4px 10px;"><b>BDS HOME</b><span class="num tick" style="font-size:14px;" data-f="BDSTS1">0</span></div>
             <div class="gate" style="padding:4px 10px;"><b>BDS AWAY</b><span class="num tick" style="font-size:14px;" data-f="BDSTS2">0</span></div>
@@ -342,14 +342,14 @@
                 bds.insertAdjacentHTML("beforeend",
                     '<div class="cell" data-heat="bds' + i + '"><div class="lbl">S' + i + '</div>' +
                     '<div class="in num tick" data-f="bdsIn' + i + '">0</div>' +
-                    '<div class="sold tick" data-f="bdsSold' + i + '">of —</div></div>');
+                    '<div class="sold tick" data-f="bdsSold' + i + '">of \u2014</div></div>');
             }
             // Alpha displayed S4 S3 S2 S1 (left-to-right)
             [4, 3, 2, 1].forEach(function (n) {
                 alpha.insertAdjacentHTML("beforeend",
                     '<div class="cell" data-heat="alpha' + n + '"><div class="lbl">S' + n + '</div>' +
                     '<div class="in num tick" data-f="alphaIn' + n + '">0</div>' +
-                    '<div class="sold tick" data-f="alphaSold' + n + '">of —</div></div>');
+                    '<div class="sold tick" data-f="alphaSold' + n + '">of \u2014</div></div>');
             });
             var bdsM = document.getElementById("bdsRowM"), alphaM = document.getElementById("alphaRowM");
             for (i = 1; i <= 9; i++) {
@@ -368,14 +368,14 @@
 
         // ---- helpers -------------------------------------------------------
         function num(v) { var x = parseInt(String(v).replace(/[^0-9-]/g, ""), 10); return isNaN(x) ? 0 : x; }
-        function fmt(x) { return (x === null || x === undefined || isNaN(x)) ? "—" : Number(x).toLocaleString("en-GB"); }
+        function fmt(x) { return (x === null || x === undefined || isNaN(x)) ? "\u2014" : Number(x).toLocaleString("en-GB"); }
         // percentage in/sold; null when sold is unknown or zero
         function pct(inn, sold) { return (sold === null || isNaN(sold) || sold <= 0) ? null : Math.round(inn / sold * 100); }
 
         function setText(field, val) {
             var els = document.querySelectorAll('[data-f="' + field + '"]');
             for (var i = 0; i < els.length; i++) {
-                var el = els[i], s = (val === null || val === undefined) ? "—" : String(val);
+                var el = els[i], s = (val === null || val === undefined) ? "\u2014" : String(val);
                 if (el.textContent !== s) {
                     el.style.opacity = ".35";
                     (function (e, t) { setTimeout(function () { e.textContent = t; e.style.opacity = "1"; }, 150); })(el, s);
@@ -400,7 +400,7 @@
             // ---- ticket-type buckets (sold = SUM(QtySold) rows; in = checked in) ----
             var onlineSold = num(d.OnlineSold), onlineIn = num(d.OnlineCheckedIn);
             var seasonIn = num(d.SeasonTicketsCheckedIn), seasonIssued = num(d.SeasonTicketsSold);
-            var walkIn = num(d.WalkUpCheckedIn), walkSold = num(d.WalkUpSold);
+            var walkIn = num(d.WalkUpCheckedIn), walkSold = walkIn;   // walk-ups sold at gate = checked in
             var allSold = num(d.AllSold), allIn = num(d.AllCheckedIn);
             // "other" = residual bucket: everything not online/season/walk-up (incl. comps)
             var otherSold = Math.max(0, allSold - onlineSold - seasonIssued - walkSold);
@@ -421,10 +421,10 @@
 
             var pOnline = pct(onlineIn, onlineSold), pSeason = pct(seasonIn, seasonIssued),
                 pWalk = pct(walkIn, walkSold), pOther = pct(otherIn, otherSold);
-            setText("onlinePct", pOnline === null ? "—" : pOnline + "% in");
-            setText("seasonPct", pSeason === null ? "—" : pSeason + "% in");
-            setText("walkupPct", pWalk === null ? "—" : pWalk + "% in");
-            setText("otherPct", pOther === null ? "—" : pOther + "% in");
+            setText("onlinePct", pOnline === null ? "\u2014" : pOnline + "% in");
+            setText("seasonPct", pSeason === null ? "\u2014" : pSeason + "% in");
+            setText("walkupPct", pWalk === null ? "\u2014" : pWalk + "% in");
+            setText("otherPct", pOther === null ? "\u2014" : pOther + "% in");
             setBar("online", pOnline); setBar("season", pSeason); setBar("walkup", pWalk); setBar("other", pOther);
 
             // ---- attendance hero: totalSold = every ticket out ----
@@ -432,7 +432,7 @@
             var totalIn = num(d.TotalCheckedIn);
             var pOverall = pct(totalIn, totalSold);
             setText("totalSold", fmt(totalSold));
-            setText("overallPct", pOverall === null ? "—" : pOverall);
+            setText("overallPct", pOverall === null ? "\u2014" : pOverall);
             setBar("overall", pOverall);
 
             // ---- home v away (online) ----
@@ -518,7 +518,7 @@
             }
 
             $.connection.hub.disconnected(function () {
-                setText("lastupdate", "Reconnecting…");
+                setText("lastupdate", "Reconnecting\u2026");
                 setTimeout(connect, 5000);
             });
 
