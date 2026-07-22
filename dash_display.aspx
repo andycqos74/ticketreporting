@@ -401,10 +401,10 @@
             var onlineSold = num(d.OnlineSold), onlineIn = num(d.OnlineCheckedIn);
             var seasonIn = num(d.SeasonTicketsCheckedIn), seasonIssued = num(d.SeasonTicketsSold);
             var walkIn = num(d.WalkUpCheckedIn), walkSold = walkIn;   // walk-ups sold at gate = checked in
-            var allSold = num(d.AllSold), allIn = num(d.AllCheckedIn);
-            // "other" = residual bucket: everything not online/season/walk-up (incl. comps)
-            var otherSold = Math.max(0, allSold - onlineSold - seasonIssued - walkSold);
-            var otherIn = Math.max(0, allIn - onlineIn - seasonIn - walkIn);
+            var allSold = num(d.AllSold);
+            // "other" = explicit count from the view: not online/season/walk-up
+            // (comp / carer / explicit "other" / untyped ticket types)
+            var otherSold = num(d.OtherSold), otherIn = num(d.OtherCheckedIn);
 
             setText("fixturename", d.fixturename || "");
             setText("lastupdate", d.lastupdate || "");
@@ -488,7 +488,7 @@
         $(function () {
             var chat = $.connection.chatHubticketco;
 
-            chat.client.broadcastMessage = function (TotalCheckedIn, WalkUpCheckedIn, OnlineCheckedIn, OnlineSold, SeasonTicketsCheckedIn, AwaySold, HomeSold, awaycheckedin, homecheckedin, BDS1CheckedIn, BDS2CheckedIn, BDS3CheckedIn, BDS4CheckedIn, BDS5CheckedIn, BDS7CheckedIn, BDS8CheckedIn, BDS9CheckedIn, OakbankCheckedIn, TerreglesCheckedIn, Alpha1CheckedIn, Alpha2CheckedIn, Alpha3CheckedIn, Alpha4CheckedIn, AlphaTS1, AlphaTS2, EncTS1, TerraceTS1, BDSTS1, BDSTS2, lastupdate, BDS6CheckedIn, ReportedCrowd, other, CompsCheckedIn, fixturename, errormsg, SeasonTicketsSold, WalkUpSold, BDS1Sold, BDS2Sold, BDS3Sold, BDS4Sold, BDS5Sold, BDS6Sold, BDS7Sold, BDS8Sold, BDS9Sold, Alpha1Sold, Alpha2Sold, Alpha3Sold, Alpha4Sold, OakbankSold, AllSold, AllCheckedIn) {
+            chat.client.broadcastMessage = function (TotalCheckedIn, WalkUpCheckedIn, OnlineCheckedIn, OnlineSold, SeasonTicketsCheckedIn, AwaySold, HomeSold, awaycheckedin, homecheckedin, BDS1CheckedIn, BDS2CheckedIn, BDS3CheckedIn, BDS4CheckedIn, BDS5CheckedIn, BDS7CheckedIn, BDS8CheckedIn, BDS9CheckedIn, OakbankCheckedIn, TerreglesCheckedIn, Alpha1CheckedIn, Alpha2CheckedIn, Alpha3CheckedIn, Alpha4CheckedIn, AlphaTS1, AlphaTS2, EncTS1, TerraceTS1, BDSTS1, BDSTS2, lastupdate, BDS6CheckedIn, ReportedCrowd, other, CompsCheckedIn, fixturename, errormsg, SeasonTicketsSold, WalkUpSold, BDS1Sold, BDS2Sold, BDS3Sold, BDS4Sold, BDS5Sold, BDS6Sold, BDS7Sold, BDS8Sold, BDS9Sold, Alpha1Sold, Alpha2Sold, Alpha3Sold, Alpha4Sold, OakbankSold, AllSold, AllCheckedIn, OtherSold, OtherCheckedIn) {
                 render({
                     TotalCheckedIn: TotalCheckedIn, WalkUpCheckedIn: WalkUpCheckedIn, OnlineCheckedIn: OnlineCheckedIn,
                     OnlineSold: OnlineSold, SeasonTicketsCheckedIn: SeasonTicketsCheckedIn, AwaySold: AwaySold, HomeSold: HomeSold,
@@ -505,7 +505,8 @@
                     BDS1Sold: BDS1Sold, BDS2Sold: BDS2Sold, BDS3Sold: BDS3Sold, BDS4Sold: BDS4Sold, BDS5Sold: BDS5Sold,
                     BDS6Sold: BDS6Sold, BDS7Sold: BDS7Sold, BDS8Sold: BDS8Sold, BDS9Sold: BDS9Sold,
                     Alpha1Sold: Alpha1Sold, Alpha2Sold: Alpha2Sold, Alpha3Sold: Alpha3Sold, Alpha4Sold: Alpha4Sold,
-                    OakbankSold: OakbankSold, AllSold: AllSold, AllCheckedIn: AllCheckedIn
+                    OakbankSold: OakbankSold, AllSold: AllSold, AllCheckedIn: AllCheckedIn,
+                    OtherSold: OtherSold, OtherCheckedIn: OtherCheckedIn
                 });
             };
 
