@@ -400,8 +400,10 @@
             // ticket types
             var onlineSold = num(d.OnlineSold), onlineIn = num(d.OnlineCheckedIn);
             var seasonIn = num(d.SeasonTicketsCheckedIn), seasonIssued = null;      // MISSING in feed
-            var walkIn = num(d.WalkUpCheckedIn), walkSold = null;                   // MISSING in feed
-            var otherSold = num(d.other), otherIn = num(d.CompsCheckedIn);          // other=sold, comps=checked-in
+            var walkIn = num(d.WalkUpCheckedIn), walkSold = walkIn;                 // walk-ups sold at gate = checked in
+            var otherSold = num(d.other);                                           // othersold from view
+            // "other" checked-in = everyone not already split out (incl. comps)
+            var otherIn = Math.max(0, num(d.TotalCheckedIn) - onlineIn - seasonIn - walkIn);
 
             setText("fixturename", d.fixturename || "");
             setText("lastupdate", d.lastupdate || "");
@@ -466,17 +468,18 @@
             }
             setText("OakbankCheckedIn", fmt(oakIn)); setText("oakSold", "of —");
             setHeat("oak", oakIn, null, maxIn);
-            setHeat("wup", walkIn, null, maxIn);
-            setText("wupSold", "of —");
+            setHeat("wup", walkIn, walkSold, maxIn);
+            setText("wupSold", "of " + fmt(walkSold));
 
             // by stand (checked-in sums; per-stand SOLD MISSING)
             var bdsSum = bdsIns.reduce(function (a, b) { return a + b; }, 0);
             var alphaSum = alphaIns.reduce(function (a, b) { return a + b; }, 0);
             setText("bdsIn", fmt(bdsSum)); setText("bdsSold", "—");
             setText("alphaIn", fmt(alphaSum)); setText("alphaSold", "—");
-            setText("oakSold2", "—"); setText("wupSold2", "—");
-            // per-stand bars need sold totals (MISSING) -> left empty
-            setBar("stBds", null); setBar("stAlpha", null); setBar("stOak", null); setBar("stWalk", null);
+            setText("oakSold2", "—"); setText("wupSold2", fmt(walkSold));
+            // per-stand bars need sold totals (MISSING) except walk-ups (= checked in)
+            setBar("stBds", null); setBar("stAlpha", null); setBar("stOak", null);
+            setBar("stWalk", pct(walkIn, walkSold));
         }
 
         // ---- SignalR (existing contract, unchanged 36-arg signature) -------
