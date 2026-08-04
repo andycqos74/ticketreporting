@@ -58,6 +58,104 @@ Public Class ChatHubticketco
         }
     End Function
 
+    ' -------------------------------------------------------------------------
+    '  Admin: per-fixture ticket-type mapping (dash_control.aspx)
+    ' -------------------------------------------------------------------------
+
+    ''' <summary>
+    ''' Distinct ticket types seen in the sales data for a fixture, with sold
+    ''' and checked-in counts, so the admin grid can be populated.
+    ''' </summary>
+    Public Function GetTicketTypes(ByVal eventid As String) As Object
+        Dim constr As String = ConfigurationManager.ConnectionStrings("QosTickets").ConnectionString
+        Dim list As New List(Of Object)
+        Using con As New MySqlConnection(constr)
+            con.Open()
+            Using cmd As New MySqlCommand(
+                "SELECT TicketType, COUNT(*) AS sold, " &
+                "SUM(CASE WHEN CheckedInDate IS NOT NULL AND CheckedInDate <> '' THEN 1 ELSE 0 END) AS checkedin " &
+                "FROM ticketco_matchsales_live WHERE fixtureid = @f " &
+                "GROUP BY TicketType ORDER BY sold DESC", con)
+                cmd.Parameters.AddWithValue("@f", eventid)
+                Using r = cmd.ExecuteReader()
+                    While r.Read()
+                        list.Add(New With {
+                            .tickettype = r("TicketType").ToString(),
+                            .sold = Convert.ToInt32(r("sold")),
+                            .checkedin = Convert.ToInt32(r("checkedin"))
+                        })
+                    End While
+                End Using
+            End Using
+        End Using
+        Return list
+    End Function
+
+    ''' <summary>Existing mapping + manual "other" figure for a fixture (to pre-fill the grid).</summary>
+    Public Function GetMapping(ByVal eventid As String) As Object
+        Dim constr As String = ConfigurationManager.ConnectionStrings("QosTickets").ConnectionString
+        Dim maps As New List(Of Object)
+        Dim otherManual As Integer = 0
+        Using con As New MySqlConnection(constr)
+            con.Open()
+            Using cmd As New MySqlCommand(
+                "SELECT tickettype, homeaway, attendance, channel, category FROM ticket_type_map WHERE fixtureid = @f", con)
+                cmd.Parameters.AddWithValue("@f", eventid)
+                Using r = cmd.ExecuteReader()
+                    While r.Read()
+                        maps.Add(New With {
+                            .tickettype = r("tickettype").ToString(),
+                            .homeaway = r("homeaway").ToString(),
+                            .attendance = r("attendance").ToString(),
+                            .channel = r("channel").ToString(),
+                            .category = r("category").ToString()
+                        })
+                    End While
+                End Using
+            End Using
+            Using cmd2 As New MySqlCommand("SELECT other_manual FROM fixture_admin WHERE fixtureid = @f", con)
+                cmd2.Parameters.AddWithValue("@f", eventid)
+                Dim o As Object = cmd2.ExecuteScalar()
+                If o IsNot Nothing AndAlso o IsNot DBNull.Value Then otherManual = Convert.ToInt32(o)
+            End Using
+        End Using
+        Return New With {.mappings = maps, .otherManual = otherManual}
+    End Function
+
+    ''' <summary>
+    ''' Persist the mapping for a fixture. mappingJson is a JSON array of
+    ''' { tickettype, homeaway, attendance, channel, category }.
+    ''' </summary>
+    Public Sub SaveMapping(ByVal eventid As String, ByVal mappingJson As String, ByVal otherManual As Integer)
+        Dim rows As JArray = JArray.Parse(If(mappingJson, "[]"))
+        Dim constr As String = ConfigurationManager.ConnectionStrings("QosTickets").ConnectionString
+        Using con As New MySqlConnection(constr)
+            con.Open()
+            For Each m As JObject In rows
+                Using cmd As New MySqlCommand(
+                    "INSERT INTO ticket_type_map (fixtureid, tickettype, homeaway, attendance, channel, category) " &
+                    "VALUES (@f, @t, @h, @a, @c, @g) ON DUPLICATE KEY UPDATE " &
+                    "homeaway = VALUES(homeaway), attendance = VALUES(attendance), " &
+                    "channel = VALUES(channel), category = VALUES(category)", con)
+                    cmd.Parameters.AddWithValue("@f", eventid)
+                    cmd.Parameters.AddWithValue("@t", m("tickettype").ToString())
+                    cmd.Parameters.AddWithValue("@h", m("homeaway").ToString())
+                    cmd.Parameters.AddWithValue("@a", m("attendance").ToString())
+                    cmd.Parameters.AddWithValue("@c", m("channel").ToString())
+                    cmd.Parameters.AddWithValue("@g", m("category").ToString())
+                    cmd.ExecuteNonQuery()
+                End Using
+            Next
+            Using cmd As New MySqlCommand(
+                "INSERT INTO fixture_admin (fixtureid, other_manual) VALUES (@f, @o) " &
+                "ON DUPLICATE KEY UPDATE other_manual = VALUES(other_manual)", con)
+                cmd.Parameters.AddWithValue("@f", eventid)
+                cmd.Parameters.AddWithValue("@o", otherManual)
+                cmd.ExecuteNonQuery()
+            End Using
+        End Using
+    End Sub
+
     ''' <summary>
     ''' Run a single import + broadcast immediately (used for a manual refresh
     ''' and for the very first paint when a dashboard connects).

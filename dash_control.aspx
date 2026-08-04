@@ -95,6 +95,55 @@
                 </div>
             </div>
 
+            <!-- ===================== Ticket-type mapping (admin) ===================== -->
+            <div class="row pt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">Ticket-type mapping (admin)</div>
+                        <div class="card-body">
+                            <div class="form-row align-items-end">
+                                <div class="form-group col-md-4">
+                                    <label for="mapFixtureId">Fixture ID</label>
+                                    <input id="mapFixtureId" class="form-control" type="text" placeholder="TicketCo event id" />
+                                </div>
+                                <div class="form-group col-md-8">
+                                    <button id="btnUseCurrent" type="button" class="btn btn-outline-secondary">Use current</button>
+                                    <button id="btnLoadTypes" type="button" class="btn btn-primary">Load ticket types</button>
+                                </div>
+                            </div>
+
+                            <div class="table-responsive">
+                                <table class="table table-sm" id="mapTable" style="display:none;">
+                                    <thead>
+                                        <tr>
+                                            <th>Ticket type</th>
+                                            <th class="text-right">Sold</th>
+                                            <th class="text-right">Checked in</th>
+                                            <th>Home / Away</th>
+                                            <th>Attendance uses</th>
+                                            <th>Channel</th>
+                                            <th>Category</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="mapBody"></tbody>
+                                </table>
+                            </div>
+
+                            <div class="form-row align-items-end mt-2">
+                                <div class="form-group col-md-4">
+                                    <label for="otherManual">Manual &ldquo;other&rdquo; figure (this fixture)</label>
+                                    <input id="otherManual" class="form-control" type="number" value="0" />
+                                </div>
+                                <div class="form-group col-md-8">
+                                    <button id="btnSaveMap" type="button" class="btn btn-success" style="display:none;">Save mapping</button>
+                                </div>
+                            </div>
+                            <p class="mb-0"><small id="mapLog" class="text-muted"></small></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
 
 
         </div> <!-- end of container -->
@@ -283,8 +332,76 @@
 
             connect();
 
+            // ---------------- Ticket-type mapping (admin) ----------------
+            var OPT_HOMEAWAY = [["home", "Home"], ["away", "Away"], ["na", "N/A"]];
+            var OPT_ATT = [["checkedin", "Checked in"], ["sold", "Sold"], ["exclude", "Exclude"]];
+            var OPT_CHAN = [["online", "Online"], ["walkup", "Walk-up"]];
+            var OPT_CAT = [["match", "Match ticket"], ["season", "Season ticket"]];
 
+            function esc(s) { return $("<div/>").text(s == null ? "" : s).html(); }
 
+            function sel(cls, opts, val) {
+                var h = '<select class="form-control form-control-sm ' + cls + '">';
+                for (var i = 0; i < opts.length; i++) {
+                    h += '<option value="' + opts[i][0] + '"' +
+                         (opts[i][0] === val ? " selected" : "") + '>' + opts[i][1] + '</option>';
+                }
+                return h + "</select>";
+            }
+
+            function renderMap(types, existing, otherManual) {
+                var byType = {};
+                (existing || []).forEach(function (m) { byType[m.tickettype] = m; });
+                var body = $("#mapBody").empty();
+                types.forEach(function (t) {
+                    var m = byType[t.tickettype] || {};
+                    body.append('<tr data-type="' + esc(t.tickettype) + '">' +
+                        '<td>' + esc(t.tickettype) + '</td>' +
+                        '<td class="text-right">' + t.sold + '</td>' +
+                        '<td class="text-right">' + t.checkedin + '</td>' +
+                        '<td>' + sel("m-ha", OPT_HOMEAWAY, m.homeaway || "na") + '</td>' +
+                        '<td>' + sel("m-att", OPT_ATT, m.attendance || "checkedin") + '</td>' +
+                        '<td>' + sel("m-chan", OPT_CHAN, m.channel || "online") + '</td>' +
+                        '<td>' + sel("m-cat", OPT_CAT, m.category || "match") + '</td>' +
+                        '</tr>');
+                });
+                $("#otherManual").val(otherManual || 0);
+                $("#mapTable").show();
+                $("#btnSaveMap").show();
+            }
+
+            $("#btnUseCurrent").click(function () { $("#mapFixtureId").val($("#statusFixture").text()); });
+
+            $("#btnLoadTypes").click(function () {
+                var fid = $.trim($("#mapFixtureId").val());
+                if (!fid) { $("#mapLog").text("Enter a fixture id."); return; }
+                $("#mapLog").text("Loading…");
+                chat.server.getTicketTypes(fid).done(function (types) {
+                    chat.server.getMapping(fid).done(function (map) {
+                        renderMap(types, map.mappings, map.otherManual);
+                        $("#mapLog").text(types.length + " ticket types loaded.");
+                    });
+                }).fail(function (e) { $("#mapLog").text("Load failed: " + e); });
+            });
+
+            $("#btnSaveMap").click(function () {
+                var fid = $.trim($("#mapFixtureId").val());
+                var rows = [];
+                $("#mapBody tr").each(function () {
+                    var $t = $(this);
+                    rows.push({
+                        tickettype: $t.attr("data-type"),
+                        homeaway: $t.find(".m-ha").val(),
+                        attendance: $t.find(".m-att").val(),
+                        channel: $t.find(".m-chan").val(),
+                        category: $t.find(".m-cat").val()
+                    });
+                });
+                var other = parseInt($("#otherManual").val(), 10) || 0;
+                chat.server.saveMapping(fid, JSON.stringify(rows), other)
+                    .done(function () { $("#mapLog").text("Mapping saved (" + rows.length + " types)."); })
+                    .fail(function (e) { $("#mapLog").text("Save failed: " + e); });
+            });
 
 
 
