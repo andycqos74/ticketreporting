@@ -167,16 +167,20 @@ Public Class ChatHubticketco
             End Using
         End Using
 
-        ' 3. API-defined match types (for fixtures with no sales yet). Titles only.
+        ' 3. API-defined types for this fixture, from the single-event endpoint
+        '    (events/{id}) -- which returns the full list INCLUDING season-pass
+        '    types copied onto the fixture. Season is inferred from the title so
+        '    the grid can default its category; any saved mapping still wins.
         Try
             Dim titles As List(Of String) = TicketcoImporter.FetchEventItemTypeTitles(eventid)
             For Each title As String In titles
                 If String.IsNullOrEmpty(title) OrElse byType.ContainsKey(title) Then Continue For
+                Dim cat As String = If(title.IndexOf("season", StringComparison.OrdinalIgnoreCase) >= 0, "season", "match")
                 byType(title) = New With {
                     .tickettype = title,
                     .sold = 0,
                     .checkedin = 0,
-                    .category = "match"
+                    .category = cat
                 }
                 ordered.Add(title)
             Next
@@ -719,83 +723,60 @@ Public NotInheritable Class TicketcoImporter
     End Function
 
     ''' <summary>
-    ''' The ticket-type titles defined for one event (its event_item_types).
-    ''' NOTE: season-pass types are NOT part of the event extract (they are
-    ''' created against the season pass, not the event). GetTicketTypes adds
-    ''' them separately from the ticketco_matchsales_live catalogue, where they
-    ''' carry ticketcotickettype SeasonPassType/SeasonPassShadowType.
+    ''' Fetch a single event by id (events/{id}). Unlike the events LIST
+    ''' endpoint, the single-event resource returns the COMPLETE event_item_types
+    ''' -- including the season-pass types copied onto the fixture -- so it is
+    ''' the source the admin grid uses. Tolerant of the response being wrapped
+    ''' ({"event": {...}}) or a bare object. Returns Nothing on failure.
+    ''' </summary>
+    Public Shared Function FetchEventDetail(ByVal eventid As String) As JObject
+        If String.IsNullOrEmpty(eventid) Then Return Nothing
+        Dim url As String = String.Format("{0}events/{1}?token={2}",
+                                          ApiRoot, Uri.EscapeDataString(eventid),
+                                          Uri.EscapeDataString(RequireToken()))
+        Dim root As JObject = ParseObject(FetchJson(url))
+        Dim ev As JObject = TryCast(root("event"), JObject)
+        If ev IsNot Nothing Then Return ev
+        If root("event_item_types") IsNot Nothing OrElse root("id") IsNot Nothing Then Return root
+        Return Nothing
+    End Function
+
+    ''' <summary>
+    ''' All event_item_types titles for one fixture, from the single-event
+    ''' endpoint (so season-pass types copied onto the fixture are included).
     ''' </summary>
     Public Shared Function FetchEventItemTypeTitles(ByVal eventid As String) As List(Of String)
-        Dim titles As New List(Of String)
-        If String.IsNullOrEmpty(eventid) Then Return titles
-
-        Dim events As JArray = FetchEvents()
-        If events Is Nothing Then Return titles
-
-        For Each ev As JObject In events
-            If Str(ev, "id") = eventid Then
-                Dim types As JArray = TryCast(ev("event_item_types"), JArray)
-                If types IsNot Nothing Then
-                    For Each t As JObject In types
-                        Dim title As String = Str(t, "title")
-                        If Not String.IsNullOrEmpty(title) Then titles.Add(title)
-                    Next
-                End If
-                Exit For
-            End If
-        Next
-        Return titles
+        Return TitlesFromEvent(FetchEventDetail(eventid), Nothing)
     End Function
 
     ''' <summary>
-    ''' The ticket-type titles defined on a season pass, for a one-time import
-    ''' into the season_ticket_types catalogue. Season passes are their own
-    ''' object type in TicketCo (type=SeasonPass), referenced by id, and carry
-    ''' the same event_item_types shape as an event. If <paramref name="seasonRef"/>
-    ''' is supplied only that season pass is read; otherwise every active season
-    ''' pass's types are collected.
+    ''' Season-pass titles for the one-time catalogue import. Reads the same
+    ''' single-event resource (events/{ref}) -- which returns every type on that
+    ''' fixture -- and keeps only the season-looking titles (containing
+    ''' "season"), so match types are not miscatalogued as season.
     ''' </summary>
     Public Shared Function FetchSeasonPassItemTypeTitles(ByVal seasonRef As String) As List(Of String)
-        Dim titles As New List(Of String)
-        Dim url As String = String.Format("{0}events?token={1}&type=SeasonPass&status=active",
-                                          ApiRoot, Uri.EscapeDataString(RequireToken()))
-        Dim root As JObject = ParseObject(FetchJson(url))
-        Dim arr As JArray = FirstArray(root)
-        If arr Is Nothing Then Return titles
-
-        For Each obj As JObject In arr
-            If Not String.IsNullOrEmpty(seasonRef) AndAlso Str(obj, "id") <> seasonRef Then
-                Continue For
-            End If
-            Dim types As JArray = TryCast(obj("event_item_types"), JArray)
-            If types IsNot Nothing Then
-                For Each t As JObject In types
-                    Dim title As String = Str(t, "title")
-                    If Not String.IsNullOrEmpty(title) AndAlso Not titles.Contains(title) Then
-                        titles.Add(title)
-                    End If
-                Next
-            End If
-        Next
-        Return titles
+        Return TitlesFromEvent(FetchEventDetail(seasonRef), "season")
     End Function
 
     ''' <summary>
-    ''' The first JSON array in a response object: prefers the known wrapper
-    ''' keys, else falls back to the first array-valued property. Keeps the
-    ''' season-pass import tolerant of the exact wrapper key TicketCo returns.
+    ''' Extract distinct event_item_types titles from an event object. When
+    ''' <paramref name="mustContain"/> is supplied, only titles containing that
+    ''' substring (case-insensitive) are returned.
     ''' </summary>
-    Private Shared Function FirstArray(ByVal root As JObject) As JArray
-        If root Is Nothing Then Return Nothing
-        For Each key As String In New String() {"events", "season_passes", "season_pass", "data"}
-            Dim a As JArray = TryCast(root(key), JArray)
-            If a IsNot Nothing Then Return a
+    Private Shared Function TitlesFromEvent(ByVal ev As JObject, ByVal mustContain As String) As List(Of String)
+        Dim titles As New List(Of String)
+        If ev Is Nothing Then Return titles
+        Dim types As JArray = TryCast(ev("event_item_types"), JArray)
+        If types Is Nothing Then Return titles
+        For Each t As JObject In types
+            Dim title As String = Str(t, "title")
+            If String.IsNullOrEmpty(title) OrElse titles.Contains(title) Then Continue For
+            If Not String.IsNullOrEmpty(mustContain) AndAlso _
+               title.IndexOf(mustContain, StringComparison.OrdinalIgnoreCase) < 0 Then Continue For
+            titles.Add(title)
         Next
-        For Each p As JProperty In root.Properties()
-            Dim a As JArray = TryCast(p.Value, JArray)
-            If a IsNot Nothing Then Return a
-        Next
-        Return Nothing
+        Return titles
     End Function
 
     ''' <summary>Public string accessor for a JObject field (empty if null/absent).</summary>
