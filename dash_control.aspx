@@ -362,14 +362,19 @@
                 var body = $("#mapBody").empty();
                 types.forEach(function (t) {
                     var m = byType[t.tickettype] || {};
+                    // Defaults for an un-mapped type: use the suggested category
+                    // from the server (season vs match); season types default to
+                    // Home. Any saved mapping always wins.
+                    var suggestedCat = t.category || "match";
+                    var defHa = (suggestedCat === "season") ? "home" : "na";
                     body.append('<tr data-type="' + esc(t.tickettype) + '">' +
                         '<td>' + esc(t.tickettype) + '</td>' +
                         '<td class="text-right">' + t.sold + '</td>' +
                         '<td class="text-right">' + t.checkedin + '</td>' +
-                        '<td>' + sel("m-ha", OPT_HOMEAWAY, m.homeaway || "na") + '</td>' +
+                        '<td>' + sel("m-ha", OPT_HOMEAWAY, m.homeaway || defHa) + '</td>' +
                         '<td>' + sel("m-att", OPT_ATT, m.attendance || "checkedin") + '</td>' +
                         '<td>' + sel("m-chan", OPT_CHAN, m.channel || "online") + '</td>' +
-                        '<td>' + sel("m-cat", OPT_CAT, m.category || "match") + '</td>' +
+                        '<td>' + sel("m-cat", OPT_CAT, m.category || suggestedCat) + '</td>' +
                         '</tr>');
                 });
                 $("#otherManual").val(otherManual || 0);

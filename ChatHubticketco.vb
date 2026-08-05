@@ -94,13 +94,16 @@ Public Class ChatHubticketco
         Dim byType As New Dictionary(Of String, Object)(StringComparer.OrdinalIgnoreCase)
         Dim ordered As New List(Of String)
 
-        ' 1. Sales-data types (with real counts).
+        ' 1. Sales-data types for this fixture (with real counts). is_season
+        '    flags a type whose rows are season-pass admissions, so the grid
+        '    can default its category to "season".
         Dim constr As String = ConfigurationManager.ConnectionStrings("QosTickets").ConnectionString
         Using con As New MySqlConnection(constr)
             con.Open()
             Using cmd As New MySqlCommand(
                 "SELECT TicketType, COUNT(*) AS sold, " &
-                "SUM(CASE WHEN CheckedInDate IS NOT NULL AND CheckedInDate <> '' THEN 1 ELSE 0 END) AS checkedin " &
+                "SUM(CASE WHEN CheckedInDate IS NOT NULL AND CheckedInDate <> '' THEN 1 ELSE 0 END) AS checkedin, " &
+                "MAX(CASE WHEN ticketcotickettype IN ('SeasonPassType','SeasonPassShadowType') THEN 1 ELSE 0 END) AS is_season " &
                 "FROM ticketco_matchsales_live WHERE fixtureid = @f " &
                 "GROUP BY TicketType ORDER BY sold DESC", con)
                 cmd.Parameters.AddWithValue("@f", eventid)
@@ -111,7 +114,32 @@ Public Class ChatHubticketco
                         byType(tt) = New With {
                             .tickettype = tt,
                             .sold = Convert.ToInt32(r("sold")),
-                            .checkedin = Convert.ToInt32(r("checkedin"))
+                            .checkedin = Convert.ToInt32(r("checkedin")),
+                            .category = If(Convert.ToInt32(r("is_season")) = 1, "season", "match")
+                        }
+                        ordered.Add(tt)
+                    End While
+                End Using
+            End Using
+
+            ' 2. Season-pass catalogue: distinct season-pass titles seen in ANY
+            '    fixture. Season passes are created against the season pass (not
+            '    the event) so they are NOT in the events API extract; but the
+            '    importer records their admissions here, so past fixtures give us
+            '    the catalogue to offer for a fixture that has no season rows yet.
+            Using cmd As New MySqlCommand(
+                "SELECT DISTINCT TicketType FROM ticketco_matchsales_live " &
+                "WHERE ticketcotickettype IN ('SeasonPassType','SeasonPassShadowType') " &
+                "AND TicketType IS NOT NULL AND TicketType <> '' ORDER BY TicketType", con)
+                Using r = cmd.ExecuteReader()
+                    While r.Read()
+                        Dim tt As String = r("TicketType").ToString()
+                        If String.IsNullOrEmpty(tt) OrElse byType.ContainsKey(tt) Then Continue While
+                        byType(tt) = New With {
+                            .tickettype = tt,
+                            .sold = 0,
+                            .checkedin = 0,
+                            .category = "season"
                         }
                         ordered.Add(tt)
                     End While
@@ -119,7 +147,7 @@ Public Class ChatHubticketco
             End Using
         End Using
 
-        ' 2. API-defined types (for fixtures with no sales yet). Titles only.
+        ' 3. API-defined match types (for fixtures with no sales yet). Titles only.
         Try
             Dim titles As List(Of String) = TicketcoImporter.FetchEventItemTypeTitles(eventid)
             For Each title As String In titles
@@ -127,7 +155,8 @@ Public Class ChatHubticketco
                 byType(title) = New With {
                     .tickettype = title,
                     .sold = 0,
-                    .checkedin = 0
+                    .checkedin = 0,
+                    .category = "match"
                 }
                 ordered.Add(title)
             Next
@@ -621,10 +650,10 @@ Public NotInheritable Class TicketcoImporter
 
     ''' <summary>
     ''' The ticket-type titles defined for one event (its event_item_types).
-    ''' NOTE: season-pass types are NOT part of the event extract -- when they
-    ''' need to appear in the admin grid, add their source alongside this call
-    ''' in ChatHubticketco.GetTicketTypes (they carry ticketcotickettype
-    ''' SeasonPassType/SeasonPassShadowType in the live table).
+    ''' NOTE: season-pass types are NOT part of the event extract (they are
+    ''' created against the season pass, not the event). GetTicketTypes adds
+    ''' them separately from the ticketco_matchsales_live catalogue, where they
+    ''' carry ticketcotickettype SeasonPassType/SeasonPassShadowType.
     ''' </summary>
     Public Shared Function FetchEventItemTypeTitles(ByVal eventid As String) As List(Of String)
         Dim titles As New List(Of String)
