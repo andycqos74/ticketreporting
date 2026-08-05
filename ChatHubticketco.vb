@@ -384,6 +384,7 @@ Public Class ChatHubticketco
         Dim AllCheckedIn As String = 0
         Dim OtherBucketSold As String = 0
         Dim OtherBucketCheckedIn As String = 0
+        Dim AttendanceBase As String = 0
 
         Dim fixturename As String
 
@@ -460,10 +461,13 @@ Public Class ChatHubticketco
                             AllCheckedIn = dt.Rows(0)("AllCheckedIn").ToString
                             OtherBucketSold = dt.Rows(0)("OtherBucketSold").ToString
                             OtherBucketCheckedIn = dt.Rows(0)("OtherBucketCheckedIn").ToString
+                            AttendanceBase = dt.Rows(0)("AttendanceBase").ToString
 
-                            ' Reported attendance = online sold + season checked in + walk-ups checked in
-                            ' + comps checked in + other sold
-                            ReportedCrowd = CInt(OnlineSold) + CInt(SeasonTicketsCheckedIn) + CInt(WalkUpCheckedIn) + CInt(CompsCheckedIn) + CInt(other)
+                            ' Phase 2: attendance is mapping-driven. AttendanceBase already
+                            ' sums each mapped ticket type's chosen basis (sold / checked-in /
+                            ' exclude) from the view; add the per-fixture manual "other" figure
+                            ' (fixture_admin.other_manual, surfaced as the othersold column).
+                            ReportedCrowd = CInt(CheckNull(AttendanceBase)) + CInt(CheckNull(other))
 
                             Dim hubContext = GlobalHost.ConnectionManager.GetHubContext(Of ChatHubticketco)()
                             hubContext.Clients.All.broadcastMessage(TotalCheckedIn, WalkUpCheckedIn, OnlineCheckedIn, OnlineSold, SeasonTicketsCheckedIn, AwaySold, HomeSold, AwayCheckedIn, HomeCheckedIn, BDS1CheckedIn, BDS2CheckedIn, BDS3CheckedIn, BDS4CheckedIn, BDS5CheckedIn, BDS7CheckedIn, BDS8CheckedIn, BDS9CheckedIn, OakbankCheckedIn, TerreglesCheckedIn, Alpha1CheckedIn, Alpha2CheckedIn, Alpha3CheckedIn, Alpha4CheckedIn, AlphaTS1, AlphaTS2, EncTS1, TerraceTS1, BDSTS1, BDSTS2, "Last Update : " & DateTime.Now.ToString(" HH:mm:ss"), BDS6CheckedIn, ReportedCrowd, other, CompsCheckedIn, fixturename, "OK", SeasonTicketsSold, WalkUpSold, BDS1Sold, BDS2Sold, BDS3Sold, BDS4Sold, BDS5Sold, BDS6Sold, BDS7Sold, BDS8Sold, BDS9Sold, Alpha1Sold, Alpha2Sold, Alpha3Sold, Alpha4Sold, OakbankSold, AllSold, AllCheckedIn, OtherBucketSold, OtherBucketCheckedIn)
