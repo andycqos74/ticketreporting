@@ -24,3 +24,14 @@ CREATE TABLE IF NOT EXISTS fixture_admin (
   other_manual INT NOT NULL DEFAULT 0,
   updated_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+-- Season-pass ticket-type catalogue. Season passes are created against the
+-- season pass (not the event), so their types are absent from the events API
+-- extract. A one-time import from the season pass reference (dash_control ->
+-- "Import season pass types") seeds this so the types are offered on every
+-- fixture's mapping grid from the first game of the season.
+CREATE TABLE IF NOT EXISTS season_ticket_types (
+  tickettype VARCHAR(255) NOT NULL PRIMARY KEY,   -- the item-type title as it arrives in the live table
+  seasonref  VARCHAR(45)  NULL,                   -- the season pass reference it came from
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;

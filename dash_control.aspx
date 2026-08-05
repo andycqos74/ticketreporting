@@ -119,6 +119,17 @@
                                 </div>
                             </div>
 
+                            <div class="form-row align-items-end">
+                                <div class="form-group col-md-6">
+                                    <label for="seasonRef">Season pass reference (one-time type import)</label>
+                                    <input id="seasonRef" class="form-control" type="text" placeholder="TicketCo season pass id (blank = all active)" />
+                                </div>
+                                <div class="form-group col-md-6">
+                                    <button id="btnImportSeason" type="button" class="btn btn-outline-secondary">Import season pass types</button>
+                                    <small id="seasonLog" class="text-muted d-block mt-1"></small>
+                                </div>
+                            </div>
+
                             <div class="table-responsive">
                                 <table class="table table-sm" id="mapTable" style="display:none;">
                                     <thead>
@@ -413,6 +424,16 @@
             $("#btnUseCurrent").click(function () {
                 $("#mapFixtureId").val($("#statusFixture").text());
                 $("#mapFixtureSel").val("");
+            });
+
+            // One-time import of season-pass ticket types into the catalogue.
+            $("#btnImportSeason").click(function () {
+                var ref = $.trim($("#seasonRef").val());
+                $("#seasonLog").text("Importing…");
+                chat.server.importSeasonTypes(ref).done(function (res) {
+                    $("#seasonLog").text("Imported " + res.imported + " season type(s): " +
+                        (res.titles || []).join(", "));
+                }).fail(function (e) { $("#seasonLog").text("Import failed: " + e); });
             });
 
             $("#btnLoadTypes").click(function () {

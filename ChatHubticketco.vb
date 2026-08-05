@@ -145,6 +145,26 @@ Public Class ChatHubticketco
                     End While
                 End Using
             End Using
+
+            ' 2b. Season-pass catalogue imported once from the season pass API
+            '     reference (season_ticket_types). Guarantees the types are
+            '     offered from the first game, before any admissions exist.
+            Using cmd As New MySqlCommand(
+                "SELECT tickettype FROM season_ticket_types ORDER BY tickettype", con)
+                Using r = cmd.ExecuteReader()
+                    While r.Read()
+                        Dim tt As String = r("tickettype").ToString()
+                        If String.IsNullOrEmpty(tt) OrElse byType.ContainsKey(tt) Then Continue While
+                        byType(tt) = New With {
+                            .tickettype = tt,
+                            .sold = 0,
+                            .checkedin = 0,
+                            .category = "season"
+                        }
+                        ordered.Add(tt)
+                    End While
+                End Using
+            End Using
         End Using
 
         ' 3. API-defined match types (for fixtures with no sales yet). Titles only.
@@ -169,6 +189,31 @@ Public Class ChatHubticketco
             list.Add(byType(key))
         Next
         Return list
+    End Function
+
+    ''' <summary>
+    ''' One-time import of a season pass's ticket types into the
+    ''' season_ticket_types catalogue, so they appear on every fixture's grid
+    ''' from the first game. seasonRef is the TicketCo season pass id; leave it
+    ''' blank to import the types from every active season pass. Returns
+    ''' { imported, titles }.
+    ''' </summary>
+    Public Function ImportSeasonTypes(ByVal seasonRef As String) As Object
+        Dim titles As List(Of String) = TicketcoImporter.FetchSeasonPassItemTypeTitles(seasonRef)
+        Dim constr As String = ConfigurationManager.ConnectionStrings("QosTickets").ConnectionString
+        Using con As New MySqlConnection(constr)
+            con.Open()
+            For Each title As String In titles
+                Using cmd As New MySqlCommand(
+                    "INSERT INTO season_ticket_types (tickettype, seasonref) VALUES (@t, @s) " &
+                    "ON DUPLICATE KEY UPDATE seasonref = VALUES(seasonref)", con)
+                    cmd.Parameters.AddWithValue("@t", title)
+                    cmd.Parameters.AddWithValue("@s", If(String.IsNullOrEmpty(seasonRef), CObj(DBNull.Value), seasonRef))
+                    cmd.ExecuteNonQuery()
+                End Using
+            Next
+        End Using
+        Return New With {.imported = titles.Count, .titles = titles}
     End Function
 
     ''' <summary>Existing mapping + manual "other" figure for a fixture (to pre-fill the grid).</summary>
@@ -675,6 +720,57 @@ Public NotInheritable Class TicketcoImporter
             End If
         Next
         Return titles
+    End Function
+
+    ''' <summary>
+    ''' The ticket-type titles defined on a season pass, for a one-time import
+    ''' into the season_ticket_types catalogue. Season passes are their own
+    ''' object type in TicketCo (type=SeasonPass), referenced by id, and carry
+    ''' the same event_item_types shape as an event. If <paramref name="seasonRef"/>
+    ''' is supplied only that season pass is read; otherwise every active season
+    ''' pass's types are collected.
+    ''' </summary>
+    Public Shared Function FetchSeasonPassItemTypeTitles(ByVal seasonRef As String) As List(Of String)
+        Dim titles As New List(Of String)
+        Dim url As String = String.Format("{0}events?token={1}&type=SeasonPass&status=active",
+                                          ApiRoot, Uri.EscapeDataString(RequireToken()))
+        Dim root As JObject = ParseObject(FetchJson(url))
+        Dim arr As JArray = FirstArray(root)
+        If arr Is Nothing Then Return titles
+
+        For Each obj As JObject In arr
+            If Not String.IsNullOrEmpty(seasonRef) AndAlso Str(obj, "id") <> seasonRef Then
+                Continue For
+            End If
+            Dim types As JArray = TryCast(obj("event_item_types"), JArray)
+            If types IsNot Nothing Then
+                For Each t As JObject In types
+                    Dim title As String = Str(t, "title")
+                    If Not String.IsNullOrEmpty(title) AndAlso Not titles.Contains(title) Then
+                        titles.Add(title)
+                    End If
+                Next
+            End If
+        Next
+        Return titles
+    End Function
+
+    ''' <summary>
+    ''' The first JSON array in a response object: prefers the known wrapper
+    ''' keys, else falls back to the first array-valued property. Keeps the
+    ''' season-pass import tolerant of the exact wrapper key TicketCo returns.
+    ''' </summary>
+    Private Shared Function FirstArray(ByVal root As JObject) As JArray
+        If root Is Nothing Then Return Nothing
+        For Each key As String In New String() {"events", "season_passes", "season_pass", "data"}
+            Dim a As JArray = TryCast(root(key), JArray)
+            If a IsNot Nothing Then Return a
+        Next
+        For Each p As JProperty In root.Properties()
+            Dim a As JArray = TryCast(p.Value, JArray)
+            If a IsNot Nothing Then Return a
+        Next
+        Return Nothing
     End Function
 
     ''' <summary>Public string accessor for a JObject field (empty if null/absent).</summary>
