@@ -431,8 +431,12 @@
                 var ref = $.trim($("#seasonRef").val());
                 $("#seasonLog").text("Importing…");
                 chat.server.importSeasonTypes(ref).done(function (res) {
-                    $("#seasonLog").text("Imported " + res.imported + " season type(s): " +
-                        (res.titles || []).join(", "));
+                    if (res && res.ok) {
+                        $("#seasonLog").text("Imported " + res.imported + " season type(s): " +
+                            (res.titles || []).join(", "));
+                    } else {
+                        $("#seasonLog").text("Import error: " + (res ? res.error : "unknown"));
+                    }
                 }).fail(function (e) { $("#seasonLog").text("Import failed: " + e); });
             });
 

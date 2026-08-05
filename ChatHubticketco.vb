@@ -199,21 +199,42 @@ Public Class ChatHubticketco
     ''' { imported, titles }.
     ''' </summary>
     Public Function ImportSeasonTypes(ByVal seasonRef As String) As Object
-        Dim titles As List(Of String) = TicketcoImporter.FetchSeasonPassItemTypeTitles(seasonRef)
-        Dim constr As String = ConfigurationManager.ConnectionStrings("QosTickets").ConnectionString
-        Using con As New MySqlConnection(constr)
-            con.Open()
-            For Each title As String In titles
-                Using cmd As New MySqlCommand(
-                    "INSERT INTO season_ticket_types (tickettype, seasonref) VALUES (@t, @s) " &
-                    "ON DUPLICATE KEY UPDATE seasonref = VALUES(seasonref)", con)
-                    cmd.Parameters.AddWithValue("@t", title)
-                    cmd.Parameters.AddWithValue("@s", If(String.IsNullOrEmpty(seasonRef), CObj(DBNull.Value), seasonRef))
-                    cmd.ExecuteNonQuery()
-                End Using
-            Next
-        End Using
-        Return New With {.imported = titles.Count, .titles = titles}
+        ' Errors are returned (not thrown) so the admin page shows the real
+        ' cause -- SignalR otherwise hides the server exception behind a generic
+        ' "error invoking Hub method" message.
+        Try
+            Dim titles As List(Of String) = TicketcoImporter.FetchSeasonPassItemTypeTitles(seasonRef)
+            Dim constr As String = ConfigurationManager.ConnectionStrings("QosTickets").ConnectionString
+            Using con As New MySqlConnection(constr)
+                con.Open()
+                For Each title As String In titles
+                    Using cmd As New MySqlCommand(
+                        "INSERT INTO season_ticket_types (tickettype, seasonref) VALUES (@t, @s) " &
+                        "ON DUPLICATE KEY UPDATE seasonref = VALUES(seasonref)", con)
+                        cmd.Parameters.AddWithValue("@t", title)
+                        cmd.Parameters.AddWithValue("@s", If(String.IsNullOrEmpty(seasonRef), CObj(DBNull.Value), seasonRef))
+                        cmd.ExecuteNonQuery()
+                    End Using
+                Next
+            End Using
+            Return New With {.ok = True, .imported = titles.Count, .titles = titles, .error = ""}
+        Catch ex As WebException
+            ' Surface the HTTP status and the response body TicketCo returned.
+            Dim detail As String = ex.Message
+            Try
+                If ex.Response IsNot Nothing Then
+                    Using rs = ex.Response.GetResponseStream()
+                        Using sr As New IO.StreamReader(rs)
+                            detail &= " | body: " & sr.ReadToEnd()
+                        End Using
+                    End Using
+                End If
+            Catch
+            End Try
+            Return New With {.ok = False, .imported = 0, .titles = New List(Of String), .error = detail}
+        Catch ex As Exception
+            Return New With {.ok = False, .imported = 0, .titles = New List(Of String), .error = ex.GetType().Name & ": " & ex.Message}
+        End Try
     End Function
 
     ''' <summary>Existing mapping + manual "other" figure for a fixture (to pre-fill the grid).</summary>
