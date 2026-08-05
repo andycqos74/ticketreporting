@@ -6,6 +6,7 @@ Imports System.Configuration
 Imports System.Net
 Imports System.Threading
 Imports MySql.Data.MySqlClient
+Imports Newtonsoft.Json
 Imports Newtonsoft.Json.Linq
 
 ' =============================================================================
@@ -63,12 +64,38 @@ Public Class ChatHubticketco
     ' -------------------------------------------------------------------------
 
     ''' <summary>
-    ''' Distinct ticket types seen in the sales data for a fixture, with sold
-    ''' and checked-in counts, so the admin grid can be populated.
+    ''' Active fixtures from the TicketCo events endpoint, for the admin
+    ''' dropdown. Returns { id, title, startAt, sold } per event, newest first.
+    ''' </summary>
+    Public Function GetFixtures() As Object
+        Dim list As New List(Of Object)
+        Dim events As JArray = TicketcoImporter.FetchEvents()
+        If events IsNot Nothing Then
+            For Each ev As JObject In events
+                list.Add(New With {
+                    .id = TicketcoImporter.Str(ev, "id"),
+                    .title = TicketcoImporter.Str(ev, "title"),
+                    .startAt = TicketcoImporter.Str(ev, "start_at"),
+                    .sold = TicketcoImporter.Str(ev, "total_sold")
+                })
+            Next
+        End If
+        Return list
+    End Function
+
+    ''' <summary>
+    ''' Ticket types for a fixture, merged from two sources so the grid can be
+    ''' built whether or not any sales exist yet:
+    '''   * the API's event_item_types (the types defined for the event), and
+    '''   * distinct TicketType rows in ticketco_matchsales_live (with counts).
+    ''' A type present only in the API returns sold/checkedin = 0.
     ''' </summary>
     Public Function GetTicketTypes(ByVal eventid As String) As Object
+        Dim byType As New Dictionary(Of String, Object)(StringComparer.OrdinalIgnoreCase)
+        Dim ordered As New List(Of String)
+
+        ' 1. Sales-data types (with real counts).
         Dim constr As String = ConfigurationManager.ConnectionStrings("QosTickets").ConnectionString
-        Dim list As New List(Of Object)
         Using con As New MySqlConnection(constr)
             con.Open()
             Using cmd As New MySqlCommand(
@@ -79,15 +106,39 @@ Public Class ChatHubticketco
                 cmd.Parameters.AddWithValue("@f", eventid)
                 Using r = cmd.ExecuteReader()
                     While r.Read()
-                        list.Add(New With {
-                            .tickettype = r("TicketType").ToString(),
+                        Dim tt As String = r("TicketType").ToString()
+                        If String.IsNullOrEmpty(tt) OrElse byType.ContainsKey(tt) Then Continue While
+                        byType(tt) = New With {
+                            .tickettype = tt,
                             .sold = Convert.ToInt32(r("sold")),
                             .checkedin = Convert.ToInt32(r("checkedin"))
-                        })
+                        }
+                        ordered.Add(tt)
                     End While
                 End Using
             End Using
         End Using
+
+        ' 2. API-defined types (for fixtures with no sales yet). Titles only.
+        Try
+            Dim titles As List(Of String) = TicketcoImporter.FetchEventItemTypeTitles(eventid)
+            For Each title As String In titles
+                If String.IsNullOrEmpty(title) OrElse byType.ContainsKey(title) Then Continue For
+                byType(title) = New With {
+                    .tickettype = title,
+                    .sold = 0,
+                    .checkedin = 0
+                }
+                ordered.Add(title)
+            Next
+        Catch
+            ' API unreachable (or token missing) -- fall back to sales-data types.
+        End Try
+
+        Dim list As New List(Of Object)
+        For Each key As String In ordered
+            list.Add(byType(key))
+        Next
         Return list
     End Function
 
@@ -358,7 +409,8 @@ Public NotInheritable Class TicketcoImporter
     Private Sub New()
     End Sub
 
-    Private Const ApiBase As String = "https://ticketco.events/api/public/v1/item_grosses"
+    Private Const ApiRoot As String = "https://ticketco.events/api/public/v1/"
+    Private Const ApiBase As String = ApiRoot & "item_grosses"
 
     ''' <summary>
     ''' Fetch every page of item_grosses for <paramref name="eventid"/> and
@@ -400,7 +452,7 @@ Public NotInheritable Class TicketcoImporter
                     json = wc.DownloadString(url)
                 End Using
 
-                Dim root As JObject = JObject.Parse(json)
+                Dim root As JObject = ParseObject(json)
                 Dim items As JArray = TryCast(root("item_grosses"), JArray)
 
                 If items Is Nothing OrElse items.Count = 0 Then
@@ -522,6 +574,84 @@ Public NotInheritable Class TicketcoImporter
             End Using
         End Using
     End Sub
+
+    ' -------------------------------------------------------------------------
+    '  Shared API helpers used by the admin hub methods (GetFixtures /
+    '  GetTicketTypes). All parse with DateParseHandling.None so ISO date
+    '  strings are preserved verbatim (never reformatted to the server locale).
+    ' -------------------------------------------------------------------------
+
+    ''' <summary>Download a URL as text over TLS 1.2 with the dashboard UA.</summary>
+    Private Shared Function FetchJson(ByVal url As String) As String
+        ServicePointManager.Expect100Continue = True
+        ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12
+        Using wc As New WebClient()
+            wc.Headers("User-Agent") = "QOSFC-Dashboard/1.0"
+            Return wc.DownloadString(url)
+        End Using
+    End Function
+
+    ''' <summary>Parse a JSON object without Newtonsoft auto-converting dates.</summary>
+    Private Shared Function ParseObject(ByVal json As String) As JObject
+        Using reader As New JsonTextReader(New IO.StringReader(json))
+            reader.DateParseHandling = DateParseHandling.None
+            Return JObject.Load(reader)
+        End Using
+    End Function
+
+    Private Shared Function RequireToken() As String
+        Dim token As String = ConfigurationManager.AppSettings("TicketcoApiToken")
+        If String.IsNullOrEmpty(token) Then
+            Throw New ConfigurationErrorsException("Missing appSettings key 'TicketcoApiToken'.")
+        End If
+        Return token
+    End Function
+
+    ''' <summary>
+    ''' All active events from the TicketCo events endpoint (the response's
+    ''' "events" array). Each element carries id/title/start_at/total_sold and
+    ''' its event_item_types. Returns Nothing on failure.
+    ''' </summary>
+    Public Shared Function FetchEvents() As JArray
+        Dim url As String = String.Format("{0}events?token={1}&type=Event&status=active",
+                                          ApiRoot, Uri.EscapeDataString(RequireToken()))
+        Dim root As JObject = ParseObject(FetchJson(url))
+        Return TryCast(root("events"), JArray)
+    End Function
+
+    ''' <summary>
+    ''' The ticket-type titles defined for one event (its event_item_types).
+    ''' NOTE: season-pass types are NOT part of the event extract -- when they
+    ''' need to appear in the admin grid, add their source alongside this call
+    ''' in ChatHubticketco.GetTicketTypes (they carry ticketcotickettype
+    ''' SeasonPassType/SeasonPassShadowType in the live table).
+    ''' </summary>
+    Public Shared Function FetchEventItemTypeTitles(ByVal eventid As String) As List(Of String)
+        Dim titles As New List(Of String)
+        If String.IsNullOrEmpty(eventid) Then Return titles
+
+        Dim events As JArray = FetchEvents()
+        If events Is Nothing Then Return titles
+
+        For Each ev As JObject In events
+            If Str(ev, "id") = eventid Then
+                Dim types As JArray = TryCast(ev("event_item_types"), JArray)
+                If types IsNot Nothing Then
+                    For Each t As JObject In types
+                        Dim title As String = Str(t, "title")
+                        If Not String.IsNullOrEmpty(title) Then titles.Add(title)
+                    Next
+                End If
+                Exit For
+            End If
+        Next
+        Return titles
+    End Function
+
+    ''' <summary>Public string accessor for a JObject field (empty if null/absent).</summary>
+    Public Shared Function Str(ByVal item As JObject, ByVal name As String) As String
+        Return GetStr(item, name)
+    End Function
 
     Private Shared Function GetStr(ByVal item As JObject, ByVal name As String) As String
         Dim tok As JToken = item(name)

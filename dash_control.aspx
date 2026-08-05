@@ -102,11 +102,18 @@
                         <div class="card-header">Ticket-type mapping (admin)</div>
                         <div class="card-body">
                             <div class="form-row align-items-end">
-                                <div class="form-group col-md-4">
-                                    <label for="mapFixtureId">Fixture ID</label>
+                                <div class="form-group col-md-6">
+                                    <label for="mapFixtureSel">Fixture</label>
+                                    <select id="mapFixtureSel" class="form-control">
+                                        <option value="">(load fixtures&hellip;)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group col-md-3">
+                                    <label for="mapFixtureId">or Fixture ID</label>
                                     <input id="mapFixtureId" class="form-control" type="text" placeholder="TicketCo event id" />
                                 </div>
-                                <div class="form-group col-md-8">
+                                <div class="form-group col-md-3">
+                                    <button id="btnLoadFixtures" type="button" class="btn btn-outline-secondary">Load fixtures</button>
                                     <button id="btnUseCurrent" type="button" class="btn btn-outline-secondary">Use current</button>
                                     <button id="btnLoadTypes" type="button" class="btn btn-primary">Load ticket types</button>
                                 </div>
@@ -370,11 +377,42 @@
                 $("#btnSaveMap").show();
             }
 
-            $("#btnUseCurrent").click(function () { $("#mapFixtureId").val($("#statusFixture").text()); });
+            // Resolve the fixture id: an explicit typed id wins, otherwise the
+            // dropdown selection.
+            function fixtureId() {
+                var typed = $.trim($("#mapFixtureId").val());
+                if (typed) { return typed; }
+                return $("#mapFixtureSel").val() || "";
+            }
+
+            // Selecting a fixture from the dropdown clears any stale typed id.
+            $("#mapFixtureSel").change(function () {
+                if ($(this).val()) { $("#mapFixtureId").val(""); }
+            });
+
+            $("#btnLoadFixtures").click(function () {
+                $("#mapLog").text("Loading fixtures…");
+                chat.server.getFixtures().done(function (rows) {
+                    var $s = $("#mapFixtureSel").empty();
+                    $s.append('<option value="">(select a fixture)</option>');
+                    (rows || []).forEach(function (f) {
+                        var when = (f.startAt || "").substring(0, 10);
+                        var label = f.title + (when ? " — " + when : "") +
+                                    " (sold " + (f.sold || 0) + ", id " + f.id + ")";
+                        $s.append($("<option/>").val(f.id).text(label));
+                    });
+                    $("#mapLog").text((rows ? rows.length : 0) + " fixtures loaded.");
+                }).fail(function (e) { $("#mapLog").text("Fixtures load failed: " + e); });
+            });
+
+            $("#btnUseCurrent").click(function () {
+                $("#mapFixtureId").val($("#statusFixture").text());
+                $("#mapFixtureSel").val("");
+            });
 
             $("#btnLoadTypes").click(function () {
-                var fid = $.trim($("#mapFixtureId").val());
-                if (!fid) { $("#mapLog").text("Enter a fixture id."); return; }
+                var fid = fixtureId();
+                if (!fid) { $("#mapLog").text("Select or enter a fixture."); return; }
                 $("#mapLog").text("Loading…");
                 chat.server.getTicketTypes(fid).done(function (types) {
                     chat.server.getMapping(fid).done(function (map) {
@@ -385,7 +423,8 @@
             });
 
             $("#btnSaveMap").click(function () {
-                var fid = $.trim($("#mapFixtureId").val());
+                var fid = fixtureId();
+                if (!fid) { $("#mapLog").text("Select or enter a fixture."); return; }
                 var rows = [];
                 $("#mapBody tr").each(function () {
                     var $t = $(this);
