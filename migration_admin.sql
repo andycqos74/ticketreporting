@@ -14,9 +14,14 @@ CREATE TABLE IF NOT EXISTS ticket_type_map (
   attendance  ENUM('sold','checkedin','exclude')  NOT NULL DEFAULT 'checkedin',  -- which count feeds Reported Attendance
   channel     ENUM('online','walkup')             NOT NULL DEFAULT 'online',
   category    ENUM('season','match')              NOT NULL DEFAULT 'match',
+  multiplier  INT NOT NULL DEFAULT 1,               -- fans admitted per ticket (e.g. family ticket = 4)
   updated_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (fixtureid, tickettype)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+-- Existing installs (table already created without `multiplier`): run once.
+-- Safe to ignore MySQL error 1060 (Duplicate column) if it already exists.
+ALTER TABLE ticket_type_map ADD COLUMN multiplier INT NOT NULL DEFAULT 1 AFTER category;
 
 -- Per-fixture admin extras (currently just the manual "other" figure).
 CREATE TABLE IF NOT EXISTS fixture_admin (

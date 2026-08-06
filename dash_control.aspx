@@ -141,6 +141,7 @@
                                             <th>Attendance uses</th>
                                             <th>Channel</th>
                                             <th>Category</th>
+                                            <th title="Fans admitted per ticket (family = 4)">&times; Fans</th>
                                         </tr>
                                     </thead>
                                     <tbody id="mapBody"></tbody>
@@ -386,6 +387,7 @@
                         '<td>' + sel("m-att", OPT_ATT, m.attendance || "checkedin") + '</td>' +
                         '<td>' + sel("m-chan", OPT_CHAN, m.channel || "online") + '</td>' +
                         '<td>' + sel("m-cat", OPT_CAT, m.category || suggestedCat) + '</td>' +
+                        '<td><input type="number" class="form-control form-control-sm m-mult" min="1" step="1" style="width:70px;" value="' + (m.multiplier || 1) + '"></td>' +
                         '</tr>');
                 });
                 $("#otherManual").val(otherManual || 0);
@@ -463,7 +465,8 @@
                         homeaway: $t.find(".m-ha").val(),
                         attendance: $t.find(".m-att").val(),
                         channel: $t.find(".m-chan").val(),
-                        category: $t.find(".m-cat").val()
+                        category: $t.find(".m-cat").val(),
+                        multiplier: parseInt($t.find(".m-mult").val(), 10) || 1
                     });
                 });
                 var other = parseInt($("#otherManual").val(), 10) || 0;

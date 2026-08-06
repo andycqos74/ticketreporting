@@ -249,7 +249,7 @@ Public Class ChatHubticketco
         Using con As New MySqlConnection(constr)
             con.Open()
             Using cmd As New MySqlCommand(
-                "SELECT tickettype, homeaway, attendance, channel, category FROM ticket_type_map WHERE fixtureid = @f", con)
+                "SELECT tickettype, homeaway, attendance, channel, category, multiplier FROM ticket_type_map WHERE fixtureid = @f", con)
                 cmd.Parameters.AddWithValue("@f", eventid)
                 Using r = cmd.ExecuteReader()
                     While r.Read()
@@ -258,7 +258,8 @@ Public Class ChatHubticketco
                             .homeaway = r("homeaway").ToString(),
                             .attendance = r("attendance").ToString(),
                             .channel = r("channel").ToString(),
-                            .category = r("category").ToString()
+                            .category = r("category").ToString(),
+                            .multiplier = Convert.ToInt32(r("multiplier"))
                         })
                     End While
                 End Using
@@ -274,7 +275,7 @@ Public Class ChatHubticketco
 
     ''' <summary>
     ''' Persist the mapping for a fixture. mappingJson is a JSON array of
-    ''' { tickettype, homeaway, attendance, channel, category }.
+    ''' { tickettype, homeaway, attendance, channel, category, multiplier }.
     ''' </summary>
     Public Sub SaveMapping(ByVal eventid As String, ByVal mappingJson As String, ByVal otherManual As Integer)
         Dim rows As JArray = JArray.Parse(If(mappingJson, "[]"))
@@ -283,16 +284,17 @@ Public Class ChatHubticketco
             con.Open()
             For Each m As JObject In rows
                 Using cmd As New MySqlCommand(
-                    "INSERT INTO ticket_type_map (fixtureid, tickettype, homeaway, attendance, channel, category) " &
-                    "VALUES (@f, @t, @h, @a, @c, @g) ON DUPLICATE KEY UPDATE " &
+                    "INSERT INTO ticket_type_map (fixtureid, tickettype, homeaway, attendance, channel, category, multiplier) " &
+                    "VALUES (@f, @t, @h, @a, @c, @g, @m) ON DUPLICATE KEY UPDATE " &
                     "homeaway = VALUES(homeaway), attendance = VALUES(attendance), " &
-                    "channel = VALUES(channel), category = VALUES(category)", con)
+                    "channel = VALUES(channel), category = VALUES(category), multiplier = VALUES(multiplier)", con)
                     cmd.Parameters.AddWithValue("@f", eventid)
                     cmd.Parameters.AddWithValue("@t", m("tickettype").ToString())
                     cmd.Parameters.AddWithValue("@h", m("homeaway").ToString())
                     cmd.Parameters.AddWithValue("@a", m("attendance").ToString())
                     cmd.Parameters.AddWithValue("@c", m("channel").ToString())
                     cmd.Parameters.AddWithValue("@g", m("category").ToString())
+                    cmd.Parameters.AddWithValue("@m", ParseMultiplier(m("multiplier")))
                     cmd.ExecuteNonQuery()
                 End Using
             Next
@@ -305,6 +307,14 @@ Public Class ChatHubticketco
             End Using
         End Using
     End Sub
+
+    ''' <summary>Fans-per-ticket from a mapping row; defaults to 1, never below 1.</summary>
+    Private Shared Function ParseMultiplier(ByVal tok As JToken) As Integer
+        If tok Is Nothing OrElse tok.Type = JTokenType.Null Then Return 1
+        Dim n As Integer
+        If Integer.TryParse(tok.ToString(), n) AndAlso n >= 1 Then Return n
+        Return 1
+    End Function
 
     ''' <summary>
     ''' Run a single import + broadcast immediately (used for a manual refresh
