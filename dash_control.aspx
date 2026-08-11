@@ -119,6 +119,17 @@
                                 </div>
                             </div>
 
+                            <div class="form-row align-items-end">
+                                <div class="form-group col-md-6">
+                                    <label for="seasonRef">Season pass reference (one-time type import)</label>
+                                    <input id="seasonRef" class="form-control" type="text" placeholder="TicketCo season pass id (blank = all active)" />
+                                </div>
+                                <div class="form-group col-md-6">
+                                    <button id="btnImportSeason" type="button" class="btn btn-outline-secondary">Import season pass types</button>
+                                    <small id="seasonLog" class="text-muted d-block mt-1"></small>
+                                </div>
+                            </div>
+
                             <div class="table-responsive">
                                 <table class="table table-sm" id="mapTable" style="display:none;">
                                     <thead>
@@ -130,6 +141,7 @@
                                             <th>Attendance uses</th>
                                             <th>Channel</th>
                                             <th>Category</th>
+                                            <th title="Fans admitted per ticket (family = 4)">&times; Fans</th>
                                         </tr>
                                     </thead>
                                     <tbody id="mapBody"></tbody>
@@ -362,14 +374,20 @@
                 var body = $("#mapBody").empty();
                 types.forEach(function (t) {
                     var m = byType[t.tickettype] || {};
+                    // Defaults for an un-mapped type: use the suggested category
+                    // from the server (season vs match); season types default to
+                    // Home. Any saved mapping always wins.
+                    var suggestedCat = t.category || "match";
+                    var defHa = (suggestedCat === "season") ? "home" : "na";
                     body.append('<tr data-type="' + esc(t.tickettype) + '">' +
                         '<td>' + esc(t.tickettype) + '</td>' +
                         '<td class="text-right">' + t.sold + '</td>' +
                         '<td class="text-right">' + t.checkedin + '</td>' +
-                        '<td>' + sel("m-ha", OPT_HOMEAWAY, m.homeaway || "na") + '</td>' +
+                        '<td>' + sel("m-ha", OPT_HOMEAWAY, m.homeaway || defHa) + '</td>' +
                         '<td>' + sel("m-att", OPT_ATT, m.attendance || "checkedin") + '</td>' +
                         '<td>' + sel("m-chan", OPT_CHAN, m.channel || "online") + '</td>' +
-                        '<td>' + sel("m-cat", OPT_CAT, m.category || "match") + '</td>' +
+                        '<td>' + sel("m-cat", OPT_CAT, m.category || suggestedCat) + '</td>' +
+                        '<td><input type="number" class="form-control form-control-sm m-mult" min="1" step="1" style="width:70px;" value="' + (m.multiplier || 1) + '"></td>' +
                         '</tr>');
                 });
                 $("#otherManual").val(otherManual || 0);
@@ -410,6 +428,20 @@
                 $("#mapFixtureSel").val("");
             });
 
+            // One-time import of season-pass ticket types into the catalogue.
+            $("#btnImportSeason").click(function () {
+                var ref = $.trim($("#seasonRef").val());
+                $("#seasonLog").text("Importing…");
+                chat.server.importSeasonTypes(ref).done(function (res) {
+                    if (res && res.ok) {
+                        $("#seasonLog").text("Imported " + res.imported + " season type(s): " +
+                            (res.titles || []).join(", "));
+                    } else {
+                        $("#seasonLog").text("Import error: " + (res ? res.error : "unknown"));
+                    }
+                }).fail(function (e) { $("#seasonLog").text("Import failed: " + e); });
+            });
+
             $("#btnLoadTypes").click(function () {
                 var fid = fixtureId();
                 if (!fid) { $("#mapLog").text("Select or enter a fixture."); return; }
@@ -433,7 +465,8 @@
                         homeaway: $t.find(".m-ha").val(),
                         attendance: $t.find(".m-att").val(),
                         channel: $t.find(".m-chan").val(),
-                        category: $t.find(".m-cat").val()
+                        category: $t.find(".m-cat").val(),
+                        multiplier: parseInt($t.find(".m-mult").val(), 10) || 1
                     });
                 });
                 var other = parseInt($("#otherManual").val(), 10) || 0;

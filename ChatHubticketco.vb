@@ -94,13 +94,16 @@ Public Class ChatHubticketco
         Dim byType As New Dictionary(Of String, Object)(StringComparer.OrdinalIgnoreCase)
         Dim ordered As New List(Of String)
 
-        ' 1. Sales-data types (with real counts).
+        ' 1. Sales-data types for this fixture (with real counts). is_season
+        '    flags a type whose rows are season-pass admissions, so the grid
+        '    can default its category to "season".
         Dim constr As String = ConfigurationManager.ConnectionStrings("QosTickets").ConnectionString
         Using con As New MySqlConnection(constr)
             con.Open()
             Using cmd As New MySqlCommand(
                 "SELECT TicketType, COUNT(*) AS sold, " &
-                "SUM(CASE WHEN CheckedInDate IS NOT NULL AND CheckedInDate <> '' THEN 1 ELSE 0 END) AS checkedin " &
+                "SUM(CASE WHEN CheckedInDate IS NOT NULL AND CheckedInDate <> '' THEN 1 ELSE 0 END) AS checkedin, " &
+                "MAX(CASE WHEN ticketcotickettype IN ('SeasonPassType','SeasonPassShadowType') THEN 1 ELSE 0 END) AS is_season " &
                 "FROM ticketco_matchsales_live WHERE fixtureid = @f " &
                 "GROUP BY TicketType ORDER BY sold DESC", con)
                 cmd.Parameters.AddWithValue("@f", eventid)
@@ -111,7 +114,52 @@ Public Class ChatHubticketco
                         byType(tt) = New With {
                             .tickettype = tt,
                             .sold = Convert.ToInt32(r("sold")),
-                            .checkedin = Convert.ToInt32(r("checkedin"))
+                            .checkedin = Convert.ToInt32(r("checkedin")),
+                            .category = If(Convert.ToInt32(r("is_season")) = 1, "season", "match")
+                        }
+                        ordered.Add(tt)
+                    End While
+                End Using
+            End Using
+
+            ' 2. Season-pass catalogue: distinct season-pass titles seen in ANY
+            '    fixture. Season passes are created against the season pass (not
+            '    the event) so they are NOT in the events API extract; but the
+            '    importer records their admissions here, so past fixtures give us
+            '    the catalogue to offer for a fixture that has no season rows yet.
+            Using cmd As New MySqlCommand(
+                "SELECT DISTINCT TicketType FROM ticketco_matchsales_live " &
+                "WHERE ticketcotickettype IN ('SeasonPassType','SeasonPassShadowType') " &
+                "AND TicketType IS NOT NULL AND TicketType <> '' ORDER BY TicketType", con)
+                Using r = cmd.ExecuteReader()
+                    While r.Read()
+                        Dim tt As String = r("TicketType").ToString()
+                        If String.IsNullOrEmpty(tt) OrElse byType.ContainsKey(tt) Then Continue While
+                        byType(tt) = New With {
+                            .tickettype = tt,
+                            .sold = 0,
+                            .checkedin = 0,
+                            .category = "season"
+                        }
+                        ordered.Add(tt)
+                    End While
+                End Using
+            End Using
+
+            ' 2b. Season-pass catalogue imported once from the season pass API
+            '     reference (season_ticket_types). Guarantees the types are
+            '     offered from the first game, before any admissions exist.
+            Using cmd As New MySqlCommand(
+                "SELECT tickettype FROM season_ticket_types ORDER BY tickettype", con)
+                Using r = cmd.ExecuteReader()
+                    While r.Read()
+                        Dim tt As String = r("tickettype").ToString()
+                        If String.IsNullOrEmpty(tt) OrElse byType.ContainsKey(tt) Then Continue While
+                        byType(tt) = New With {
+                            .tickettype = tt,
+                            .sold = 0,
+                            .checkedin = 0,
+                            .category = "season"
                         }
                         ordered.Add(tt)
                     End While
@@ -119,15 +167,20 @@ Public Class ChatHubticketco
             End Using
         End Using
 
-        ' 2. API-defined types (for fixtures with no sales yet). Titles only.
+        ' 3. API-defined types for this fixture, from the single-event endpoint
+        '    (events/{id}) -- which returns the full list INCLUDING season-pass
+        '    types copied onto the fixture. Season is inferred from the title so
+        '    the grid can default its category; any saved mapping still wins.
         Try
             Dim titles As List(Of String) = TicketcoImporter.FetchEventItemTypeTitles(eventid)
             For Each title As String In titles
                 If String.IsNullOrEmpty(title) OrElse byType.ContainsKey(title) Then Continue For
+                Dim cat As String = If(title.IndexOf("season", StringComparison.OrdinalIgnoreCase) >= 0, "season", "match")
                 byType(title) = New With {
                     .tickettype = title,
                     .sold = 0,
-                    .checkedin = 0
+                    .checkedin = 0,
+                    .category = cat
                 }
                 ordered.Add(title)
             Next
@@ -142,6 +195,52 @@ Public Class ChatHubticketco
         Return list
     End Function
 
+    ''' <summary>
+    ''' One-time import of a season pass's ticket types into the
+    ''' season_ticket_types catalogue, so they appear on every fixture's grid
+    ''' from the first game. seasonRef is the TicketCo season pass id; leave it
+    ''' blank to import the types from every active season pass. Returns
+    ''' { imported, titles }.
+    ''' </summary>
+    Public Function ImportSeasonTypes(ByVal seasonRef As String) As Object
+        ' Errors are returned (not thrown) so the admin page shows the real
+        ' cause -- SignalR otherwise hides the server exception behind a generic
+        ' "error invoking Hub method" message.
+        Try
+            Dim titles As List(Of String) = TicketcoImporter.FetchSeasonPassItemTypeTitles(seasonRef)
+            Dim constr As String = ConfigurationManager.ConnectionStrings("QosTickets").ConnectionString
+            Using con As New MySqlConnection(constr)
+                con.Open()
+                For Each title As String In titles
+                    Using cmd As New MySqlCommand(
+                        "INSERT INTO season_ticket_types (tickettype, seasonref) VALUES (@t, @s) " &
+                        "ON DUPLICATE KEY UPDATE seasonref = VALUES(seasonref)", con)
+                        cmd.Parameters.AddWithValue("@t", title)
+                        cmd.Parameters.AddWithValue("@s", If(String.IsNullOrEmpty(seasonRef), CObj(DBNull.Value), seasonRef))
+                        cmd.ExecuteNonQuery()
+                    End Using
+                Next
+            End Using
+            Return New With {.ok = True, .imported = titles.Count, .titles = titles, .error = ""}
+        Catch ex As WebException
+            ' Surface the HTTP status and the response body TicketCo returned.
+            Dim detail As String = ex.Message
+            Try
+                If ex.Response IsNot Nothing Then
+                    Using rs = ex.Response.GetResponseStream()
+                        Using sr As New IO.StreamReader(rs)
+                            detail &= " | body: " & sr.ReadToEnd()
+                        End Using
+                    End Using
+                End If
+            Catch
+            End Try
+            Return New With {.ok = False, .imported = 0, .titles = New List(Of String), .error = detail}
+        Catch ex As Exception
+            Return New With {.ok = False, .imported = 0, .titles = New List(Of String), .error = ex.GetType().Name & ": " & ex.Message}
+        End Try
+    End Function
+
     ''' <summary>Existing mapping + manual "other" figure for a fixture (to pre-fill the grid).</summary>
     Public Function GetMapping(ByVal eventid As String) As Object
         Dim constr As String = ConfigurationManager.ConnectionStrings("QosTickets").ConnectionString
@@ -150,7 +249,7 @@ Public Class ChatHubticketco
         Using con As New MySqlConnection(constr)
             con.Open()
             Using cmd As New MySqlCommand(
-                "SELECT tickettype, homeaway, attendance, channel, category FROM ticket_type_map WHERE fixtureid = @f", con)
+                "SELECT tickettype, homeaway, attendance, channel, category, multiplier FROM ticket_type_map WHERE fixtureid = @f", con)
                 cmd.Parameters.AddWithValue("@f", eventid)
                 Using r = cmd.ExecuteReader()
                     While r.Read()
@@ -159,7 +258,8 @@ Public Class ChatHubticketco
                             .homeaway = r("homeaway").ToString(),
                             .attendance = r("attendance").ToString(),
                             .channel = r("channel").ToString(),
-                            .category = r("category").ToString()
+                            .category = r("category").ToString(),
+                            .multiplier = Convert.ToInt32(r("multiplier"))
                         })
                     End While
                 End Using
@@ -175,7 +275,7 @@ Public Class ChatHubticketco
 
     ''' <summary>
     ''' Persist the mapping for a fixture. mappingJson is a JSON array of
-    ''' { tickettype, homeaway, attendance, channel, category }.
+    ''' { tickettype, homeaway, attendance, channel, category, multiplier }.
     ''' </summary>
     Public Sub SaveMapping(ByVal eventid As String, ByVal mappingJson As String, ByVal otherManual As Integer)
         Dim rows As JArray = JArray.Parse(If(mappingJson, "[]"))
@@ -184,16 +284,17 @@ Public Class ChatHubticketco
             con.Open()
             For Each m As JObject In rows
                 Using cmd As New MySqlCommand(
-                    "INSERT INTO ticket_type_map (fixtureid, tickettype, homeaway, attendance, channel, category) " &
-                    "VALUES (@f, @t, @h, @a, @c, @g) ON DUPLICATE KEY UPDATE " &
+                    "INSERT INTO ticket_type_map (fixtureid, tickettype, homeaway, attendance, channel, category, multiplier) " &
+                    "VALUES (@f, @t, @h, @a, @c, @g, @m) ON DUPLICATE KEY UPDATE " &
                     "homeaway = VALUES(homeaway), attendance = VALUES(attendance), " &
-                    "channel = VALUES(channel), category = VALUES(category)", con)
+                    "channel = VALUES(channel), category = VALUES(category), multiplier = VALUES(multiplier)", con)
                     cmd.Parameters.AddWithValue("@f", eventid)
                     cmd.Parameters.AddWithValue("@t", m("tickettype").ToString())
                     cmd.Parameters.AddWithValue("@h", m("homeaway").ToString())
                     cmd.Parameters.AddWithValue("@a", m("attendance").ToString())
                     cmd.Parameters.AddWithValue("@c", m("channel").ToString())
                     cmd.Parameters.AddWithValue("@g", m("category").ToString())
+                    cmd.Parameters.AddWithValue("@m", ParseMultiplier(m("multiplier")))
                     cmd.ExecuteNonQuery()
                 End Using
             Next
@@ -206,6 +307,14 @@ Public Class ChatHubticketco
             End Using
         End Using
     End Sub
+
+    ''' <summary>Fans-per-ticket from a mapping row; defaults to 1, never below 1.</summary>
+    Private Shared Function ParseMultiplier(ByVal tok As JToken) As Integer
+        If tok Is Nothing OrElse tok.Type = JTokenType.Null Then Return 1
+        Dim n As Integer
+        If Integer.TryParse(tok.ToString(), n) AndAlso n >= 1 Then Return n
+        Return 1
+    End Function
 
     ''' <summary>
     ''' Run a single import + broadcast immediately (used for a manual refresh
@@ -289,6 +398,7 @@ Public Class ChatHubticketco
         Dim AllCheckedIn As String = 0
         Dim OtherBucketSold As String = 0
         Dim OtherBucketCheckedIn As String = 0
+        Dim AttendanceBase As String = 0
 
         Dim fixturename As String
 
@@ -365,10 +475,13 @@ Public Class ChatHubticketco
                             AllCheckedIn = dt.Rows(0)("AllCheckedIn").ToString
                             OtherBucketSold = dt.Rows(0)("OtherBucketSold").ToString
                             OtherBucketCheckedIn = dt.Rows(0)("OtherBucketCheckedIn").ToString
+                            AttendanceBase = dt.Rows(0)("AttendanceBase").ToString
 
-                            ' Reported attendance = online sold + season checked in + walk-ups checked in
-                            ' + comps checked in + other sold
-                            ReportedCrowd = CInt(OnlineSold) + CInt(SeasonTicketsCheckedIn) + CInt(WalkUpCheckedIn) + CInt(CompsCheckedIn) + CInt(other)
+                            ' Phase 2: attendance is mapping-driven. AttendanceBase already
+                            ' sums each mapped ticket type's chosen basis (sold / checked-in /
+                            ' exclude) from the view; add the per-fixture manual "other" figure
+                            ' (fixture_admin.other_manual, surfaced as the othersold column).
+                            ReportedCrowd = CInt(CheckNull(AttendanceBase)) + CInt(CheckNull(other))
 
                             Dim hubContext = GlobalHost.ConnectionManager.GetHubContext(Of ChatHubticketco)()
                             hubContext.Clients.All.broadcastMessage(TotalCheckedIn, WalkUpCheckedIn, OnlineCheckedIn, OnlineSold, SeasonTicketsCheckedIn, AwaySold, HomeSold, AwayCheckedIn, HomeCheckedIn, BDS1CheckedIn, BDS2CheckedIn, BDS3CheckedIn, BDS4CheckedIn, BDS5CheckedIn, BDS7CheckedIn, BDS8CheckedIn, BDS9CheckedIn, OakbankCheckedIn, TerreglesCheckedIn, Alpha1CheckedIn, Alpha2CheckedIn, Alpha3CheckedIn, Alpha4CheckedIn, AlphaTS1, AlphaTS2, EncTS1, TerraceTS1, BDSTS1, BDSTS2, "Last Update : " & DateTime.Now.ToString(" HH:mm:ss"), BDS6CheckedIn, ReportedCrowd, other, CompsCheckedIn, fixturename, "OK", SeasonTicketsSold, WalkUpSold, BDS1Sold, BDS2Sold, BDS3Sold, BDS4Sold, BDS5Sold, BDS6Sold, BDS7Sold, BDS8Sold, BDS9Sold, Alpha1Sold, Alpha2Sold, Alpha3Sold, Alpha4Sold, OakbankSold, AllSold, AllCheckedIn, OtherBucketSold, OtherBucketCheckedIn)
@@ -620,30 +733,58 @@ Public NotInheritable Class TicketcoImporter
     End Function
 
     ''' <summary>
-    ''' The ticket-type titles defined for one event (its event_item_types).
-    ''' NOTE: season-pass types are NOT part of the event extract -- when they
-    ''' need to appear in the admin grid, add their source alongside this call
-    ''' in ChatHubticketco.GetTicketTypes (they carry ticketcotickettype
-    ''' SeasonPassType/SeasonPassShadowType in the live table).
+    ''' Fetch a single event by id (events/{id}). Unlike the events LIST
+    ''' endpoint, the single-event resource returns the COMPLETE event_item_types
+    ''' -- including the season-pass types copied onto the fixture -- so it is
+    ''' the source the admin grid uses. Tolerant of the response being wrapped
+    ''' ({"event": {...}}) or a bare object. Returns Nothing on failure.
+    ''' </summary>
+    Public Shared Function FetchEventDetail(ByVal eventid As String) As JObject
+        If String.IsNullOrEmpty(eventid) Then Return Nothing
+        Dim url As String = String.Format("{0}events/{1}?token={2}",
+                                          ApiRoot, Uri.EscapeDataString(eventid),
+                                          Uri.EscapeDataString(RequireToken()))
+        Dim root As JObject = ParseObject(FetchJson(url))
+        Dim ev As JObject = TryCast(root("event"), JObject)
+        If ev IsNot Nothing Then Return ev
+        If root("event_item_types") IsNot Nothing OrElse root("id") IsNot Nothing Then Return root
+        Return Nothing
+    End Function
+
+    ''' <summary>
+    ''' All event_item_types titles for one fixture, from the single-event
+    ''' endpoint (so season-pass types copied onto the fixture are included).
     ''' </summary>
     Public Shared Function FetchEventItemTypeTitles(ByVal eventid As String) As List(Of String)
+        Return TitlesFromEvent(FetchEventDetail(eventid), Nothing)
+    End Function
+
+    ''' <summary>
+    ''' Season-pass titles for the one-time catalogue import. Reads the same
+    ''' single-event resource (events/{ref}) -- which returns every type on that
+    ''' fixture -- and keeps only the season-looking titles (containing
+    ''' "season"), so match types are not miscatalogued as season.
+    ''' </summary>
+    Public Shared Function FetchSeasonPassItemTypeTitles(ByVal seasonRef As String) As List(Of String)
+        Return TitlesFromEvent(FetchEventDetail(seasonRef), "season")
+    End Function
+
+    ''' <summary>
+    ''' Extract distinct event_item_types titles from an event object. When
+    ''' <paramref name="mustContain"/> is supplied, only titles containing that
+    ''' substring (case-insensitive) are returned.
+    ''' </summary>
+    Private Shared Function TitlesFromEvent(ByVal ev As JObject, ByVal mustContain As String) As List(Of String)
         Dim titles As New List(Of String)
-        If String.IsNullOrEmpty(eventid) Then Return titles
-
-        Dim events As JArray = FetchEvents()
-        If events Is Nothing Then Return titles
-
-        For Each ev As JObject In events
-            If Str(ev, "id") = eventid Then
-                Dim types As JArray = TryCast(ev("event_item_types"), JArray)
-                If types IsNot Nothing Then
-                    For Each t As JObject In types
-                        Dim title As String = Str(t, "title")
-                        If Not String.IsNullOrEmpty(title) Then titles.Add(title)
-                    Next
-                End If
-                Exit For
-            End If
+        If ev Is Nothing Then Return titles
+        Dim types As JArray = TryCast(ev("event_item_types"), JArray)
+        If types Is Nothing Then Return titles
+        For Each t As JObject In types
+            Dim title As String = Str(t, "title")
+            If String.IsNullOrEmpty(title) OrElse titles.Contains(title) Then Continue For
+            If Not String.IsNullOrEmpty(mustContain) AndAlso _
+               title.IndexOf(mustContain, StringComparison.OrdinalIgnoreCase) < 0 Then Continue For
+            titles.Add(title)
         Next
         Return titles
     End Function

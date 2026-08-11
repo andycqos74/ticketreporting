@@ -275,6 +275,24 @@
           <div class="muted" style="font-weight:500;font-size:12px;"><span class="tick" data-f="overallPct">&mdash;</span>% of <span class="tick" data-f="totalSold">&mdash;</span> sold tickets are inside</div>
         </div>
 
+        <div class="card" style="padding:12px 14px;">
+          <div class="num" style="font-weight:700;font-size:14px;letter-spacing:.04em;margin-bottom:10px;">HOME v AWAY (ONLINE SALES)</div>
+          <div style="margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;font-weight:600;font-size:11px;letter-spacing:.06em;margin-bottom:4px;">
+              <span>HOME</span>
+              <span class="muted" style="font-weight:500;font-size:12px;"><span class="tick" data-f="homecheckedin">0</span> in &middot; <span class="tick" data-f="HomeSold">0</span> sold</span>
+            </div>
+            <div class="track" style="height:8px;"><i data-bar="home" style="background:var(--blue);"></i></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;align-items:baseline;font-weight:600;font-size:11px;letter-spacing:.06em;margin-bottom:4px;">
+              <span>AWAY</span>
+              <span class="muted" style="font-weight:500;font-size:12px;"><span class="tick" data-f="awaycheckedin">0</span> in &middot; <span class="tick" data-f="AwaySold">0</span> sold</span>
+            </div>
+            <div class="track" style="height:8px;"><i data-bar="away"></i></div>
+          </div>
+        </div>
+
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
           <div class="card" style="padding:10px 12px;">
             <div style="font-weight:600;font-size:11px;letter-spacing:.06em;margin-bottom:4px;">ONLINE</div>
