@@ -28,6 +28,33 @@ run use a cache and re-run against it for free:
 `-Refresh` re-downloads over a cache. Only cache finished events — a cached
 in-progress event will under-count.
 
+### "cannot be loaded ... is not digitally signed"
+
+That's the machine's PowerShell execution policy (`AllSigned`) refusing to run
+any unsigned script file. Lift it for the current window only — no admin
+needed, and it reverts when you close the window:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+```
+
+If *that* is refused too, the policy comes from Group Policy. `Get-ExecutionPolicy -List`
+shows which scope sets it; if it's `MachinePolicy` or `UserPolicy`, sign the
+script with a self-signed certificate instead:
+
+```powershell
+$cert = New-SelfSignedCertificate -Subject "CN=QOSFC Scripts" -Type CodeSigningCert `
+        -CertStoreLocation Cert:\CurrentUser\My
+foreach ($name in 'Root','TrustedPublisher') {
+    $store = New-Object System.Security.Cryptography.X509Certificates.X509Store($name,'CurrentUser')
+    $store.Open('ReadWrite'); $store.Add($cert); $store.Close()
+}
+Set-AuthenticodeSignature -FilePath .\Get-SeasonAttendanceReport.ps1 -Certificate $cert
+```
+
+Signing appends a signature block to the file, so git will show it as modified.
+Don't commit that — it would have to be re-signed after every edit.
+
 ## What comes out
 
 A summary per season on screen, plus three CSVs in `-OutDir`:

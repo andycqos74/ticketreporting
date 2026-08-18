@@ -36,3 +36,7 @@ appsettings.local.config
 # ---- OS noise ----
 Thumbs.db
 .DS_Store
+
+# ---- Attendance report tool output (tools/Get-SeasonAttendanceReport.ps1) ----
+tc-cache/
+report-output/
