@@ -233,6 +233,7 @@ function Build-Dll {
         )
         $references = @(
             "System.dll", "System.Core.dll", "System.Data.dll", "System.Configuration.dll", "System.Web.dll",
+            "System.Web.Extensions.dll", "System.Web.Services.dll",
             "MySql.Data.dll", "Newtonsoft.Json.dll", "Microsoft.AspNet.SignalR.Core.dll",
             "Microsoft.AspNet.SignalR.SystemWeb.dll", "Microsoft.Owin.dll",
             "Microsoft.Owin.Host.SystemWeb.dll", "Owin.dll", "Microsoft.Web.Infrastructure.dll"
