@@ -1,16 +1,19 @@
 # Building
 
-This repo has been reduced to the **live dashboard + TicketCo poller** only.
-The build compiles seven `.vb` files into **`bin\admintickets.dll`** — the only
-build artifact. The `.aspx` markup, `Web.config` and static assets deploy as-is
-(IIS compiles markup at runtime).
+This repo has been reduced to the **live dashboard + TicketCo poller +
+ticket-printing page** only. The build compiles the `.vb` files listed below
+into **`bin\admintickets.dll`** — the only build artifact. The `.aspx`
+markup, `Web.config` and static assets deploy as-is (IIS compiles markup at
+runtime).
 
 Source compiled (see `admintickets.vbproj`):
 
 - `ChatHubticketco.vb` — SignalR hub + `TicketcoImporter` + `TicketcoPoller`
 - `Global.asax.vb` — starts the poller on app start
 - `Startup.vb` — OWIN SignalR wiring
+- `UC_footer.ascx.vb`, `UC_header.ascx.vb` — shared header/footer controls
 - `dash_display.aspx(.designer).vb`, `dash_control.aspx(.designer).vb`
+- `2026print-tickets.aspx(.designer).vb` — ticket-printing page
 
 ## Build
 
@@ -35,15 +38,18 @@ bin\roslyn\vbc.exe /noconfig /target:library /out:bin\admintickets.dll ^
   /r:Microsoft.AspNet.SignalR.SystemWeb.dll /r:Microsoft.Owin.dll ^
   /r:Microsoft.Owin.Host.SystemWeb.dll /r:Owin.dll /r:Microsoft.Web.Infrastructure.dll ^
   ChatHubticketco.vb Global.asax.vb Startup.vb ^
+  UC_footer.ascx.vb UC_header.ascx.vb ^
   dash_control.aspx.designer.vb dash_control.aspx.vb ^
-  dash_display.aspx.designer.vb dash_display.aspx.vb
+  dash_display.aspx.designer.vb dash_display.aspx.vb ^
+  2026print-tickets.aspx.designer.vb 2026print-tickets.aspx.vb
 ```
 
 ## After building — deploy
 
 Copy to the server (full list in `deploy-manifest.md`): `bin\admintickets.dll`,
-the two `.aspx` files, `Web.config`, and the `Scripts\ css\ images\` assets.
-`Web.config` itself carries no secrets — on first deploy, create
+the three `.aspx` files, `Web.config`, and the `Scripts\`, `css\`,
+`webfonts\`, `images\` assets. `Web.config` itself carries no secrets — on
+first deploy, create
 `secrets.config` and `connectionStrings.config` next to it on the server
 (from the `.example` templates; see `DEPLOYMENT.md`) and fill in the real
 `TicketcoApiToken` and DB connection string. Then recycle the app pool.

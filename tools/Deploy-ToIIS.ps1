@@ -17,9 +17,10 @@
          (no-op if already present).
       3. git clone (first run) or git fetch + reset (later runs) the repo
          into -SourcePath, on -Branch.
-      4. robocopy /MIR the deploy set (bin\, the two dashboard .aspx files,
-         Global.asax, Web.config, Scripts\, css\jquery-ui.min.css,
-         images\ground6.png) into -SitePath -- matches deploy-manifest.md.
+      4. robocopy the deploy set (bin\, dash_display.aspx, dash_control.aspx,
+         2026print-tickets.aspx, Global.asax, Web.config, Scripts\, css\,
+         webfonts\, images\ground6.png) into -SitePath -- matches
+         deploy-manifest.md.
       5. Seed secrets.config / connectionStrings.config in -SitePath from the
          repo's *.example templates, but ONLY if they don't already exist --
          they are gitignored, so they never come from the git checkout and
@@ -195,7 +196,7 @@ function Sync-DeployFiles {
     Write-Host "Syncing deploy set into $SitePath..." -ForegroundColor Cyan
     New-Item -ItemType Directory -Path $SitePath -Force | Out-Null
 
-    robocopy $SourcePath $SitePath dash_display.aspx dash_control.aspx Global.asax Web.config /NFL /NDL /NJH | Out-Null
+    robocopy $SourcePath $SitePath dash_display.aspx dash_control.aspx 2026print-tickets.aspx Global.asax Web.config /NFL /NDL /NJH | Out-Null
     if ($LASTEXITCODE -ge 8) { throw "robocopy failed copying top-level files (exit $LASTEXITCODE)" }
 
     robocopy (Join-Path $SourcePath "bin") (Join-Path $SitePath "bin") /MIR /XF *.pdb *.xml /NFL /NDL /NJH | Out-Null
@@ -204,8 +205,11 @@ function Sync-DeployFiles {
     robocopy (Join-Path $SourcePath "Scripts") (Join-Path $SitePath "Scripts") /MIR /NFL /NDL /NJH | Out-Null
     if ($LASTEXITCODE -ge 8) { throw "robocopy failed copying Scripts\ (exit $LASTEXITCODE)" }
 
-    robocopy (Join-Path $SourcePath "css") (Join-Path $SitePath "css") jquery-ui.min.css /NFL /NDL /NJH | Out-Null
+    robocopy (Join-Path $SourcePath "css") (Join-Path $SitePath "css") jquery-ui.min.css all.min.css bs4_custom.css /NFL /NDL /NJH | Out-Null
     if ($LASTEXITCODE -ge 8) { throw "robocopy failed copying css\ (exit $LASTEXITCODE)" }
+
+    robocopy (Join-Path $SourcePath "webfonts") (Join-Path $SitePath "webfonts") /MIR /NFL /NDL /NJH | Out-Null
+    if ($LASTEXITCODE -ge 8) { throw "robocopy failed copying webfonts\ (exit $LASTEXITCODE)" }
 
     robocopy (Join-Path $SourcePath "images") (Join-Path $SitePath "images") ground6.png /NFL /NDL /NJH | Out-Null
     if ($LASTEXITCODE -ge 8) { throw "robocopy failed copying images\ (exit $LASTEXITCODE)" }

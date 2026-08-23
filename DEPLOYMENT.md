@@ -120,10 +120,12 @@ here.
 3. Clones the repo to `C:\src\ticketreporting` (or pulls if it already
    exists there).
 4. Copies the deploy set — `bin\`, `dash_display.aspx`, `dash_control.aspx`,
-   `Global.asax`, `Web.config`, `Scripts\`, `css\jquery-ui.min.css`,
-   `images\ground6.png` — into `C:\inetpub\wwwroot\admintickets` via
-   `robocopy /MIR`, matching `deploy-manifest.md`. Source files (`.vb`,
-   `.sln`, `.vbproj`, `*.sql`, this doc, etc.) never reach the web root.
+   `2026print-tickets.aspx`, `Global.asax`, `Web.config`, `Scripts\`,
+   `css\` (jquery-ui/Font Awesome/Bootstrap-custom styles), `webfonts\`
+   (Font Awesome, needed by the ticket-printing page), `images\ground6.png`
+   — into `C:\inetpub\wwwroot\admintickets`, matching `deploy-manifest.md`.
+   Source files (`.vb`, `.sln`, `.vbproj`, `*.sql`, this doc, etc.) never
+   reach the web root.
 5. If `secrets.config` / `connectionStrings.config` don't already exist in
    the site folder, seeds them from the `.example` templates (with
    placeholder values) so the app doesn't fail to start with a missing-file
