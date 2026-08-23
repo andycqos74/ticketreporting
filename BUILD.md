@@ -26,7 +26,23 @@ build.bat
 `admintickets.sln` in Visual Studio and press **Build**. Output:
 `bin\admintickets.dll`.
 
-No MSBuild installed? The repo ships `bin\roslyn\vbc.exe`; compile directly:
+No MSBuild installed? The repo ships `bin\roslyn\vbc.exe`. **Prefer
+`tools\Deploy-ToIIS.ps1`** for this (or read its `Build-Dll` function) —
+it resolves `System.Web.Extensions.dll`/`System.Web.Services.dll` from the
+GAC automatically, which the plain command below can't do. Those two
+assemblies (needed by `2026print-tickets.aspx.vb` for `ScriptManager` and
+`WebMethod`) typically exist only in the GAC on Windows Server, not as loose
+files in `Framework64\v4.0.30319` alongside `System.Web.dll` etc., so a bare
+`/r:System.Web.Extensions.dll` + `/libpath` will fail with `error BC30002:
+Type ... is not defined` even though the reference name is correct — vbc.exe
+doesn't search the GAC the way MSBuild does. Find the real paths first:
+
+```powershell
+$extPath = [System.Reflection.Assembly]::LoadWithPartialName("System.Web.Extensions").Location
+$svcPath = [System.Reflection.Assembly]::LoadWithPartialName("System.Web.Services").Location
+```
+
+Then compile, using those resolved paths for the two GAC-only references:
 
 ```cmd
 bin\roslyn\vbc.exe /noconfig /target:library /out:bin\admintickets.dll ^
@@ -34,7 +50,7 @@ bin\roslyn\vbc.exe /noconfig /target:library /out:bin\admintickets.dll ^
   /imports:Microsoft.VisualBasic,System,System.Collections,System.Collections.Generic,System.Data,System.Diagnostics,System.Linq,System.Web,System.Web.UI,System.Web.UI.HtmlControls,System.Web.UI.WebControls ^
   /libpath:"%WINDIR%\Microsoft.NET\Framework64\v4.0.30319";bin ^
   /r:System.dll /r:System.Core.dll /r:System.Data.dll /r:System.Configuration.dll /r:System.Web.dll ^
-  /r:System.Web.Extensions.dll /r:System.Web.Services.dll ^
+  /r:%extPath% /r:%svcPath% ^
   /r:MySql.Data.dll /r:Newtonsoft.Json.dll /r:Microsoft.AspNet.SignalR.Core.dll ^
   /r:Microsoft.AspNet.SignalR.SystemWeb.dll /r:Microsoft.Owin.dll ^
   /r:Microsoft.Owin.Host.SystemWeb.dll /r:Owin.dll /r:Microsoft.Web.Infrastructure.dll ^
@@ -44,6 +60,11 @@ bin\roslyn\vbc.exe /noconfig /target:library /out:bin\admintickets.dll ^
   dash_display.aspx.designer.vb dash_display.aspx.vb ^
   2026print-tickets.aspx.designer.vb 2026print-tickets.aspx.vb
 ```
+
+(`%extPath%`/`%svcPath%` as cmd env vars, set from the PowerShell snippet
+above via `setx`/`set`, or just run the whole thing from PowerShell and
+substitute `$extPath`/`$svcPath` directly — either way, `Deploy-ToIIS.ps1`
+already does this for you and is the tested path.)
 
 ## After building — deploy
 
