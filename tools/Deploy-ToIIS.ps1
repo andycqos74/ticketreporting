@@ -31,10 +31,11 @@
       6. Create the app pool if missing: managedRuntimeVersion v4.0,
          startMode AlwaysRunning, idleTimeout 0 (the app runs a server-side
          polling timer that needs the pool to stay up).
-      7. Create the site if missing, bound to -HostName on -HttpPort and
-         -HttpsPort (SNI), with Preload Enabled. If -CertificateThumbprint is
-         given, binds it to the HTTPS binding via netsh (SNI-scoped, so it
-         doesn't disturb bindings on other sites sharing the same IP/port).
+      7. Create the site if missing, bound to -HostName on -HttpPort, with
+         Preload Enabled. If -CertificateThumbprint is given, also adds an
+         HTTPS binding (SNI, -HttpsPort) with that cert. Otherwise the site
+         is HTTP-only, which is correct when a TLS-terminating reverse proxy
+         or tunnel (e.g. Cloudflare Tunnel) sits in front of it.
       8. Recycle the app pool so a new bin\admintickets.dll takes effect.
 
 .PARAMETER RepoUrl
@@ -69,10 +70,12 @@
     HTTPS binding port. Default: 443.
 
 .PARAMETER CertificateThumbprint
-    Thumbprint of a certificate already in the machine's Personal (My)
-    store to bind to the HTTPS binding via SNI. If omitted, the HTTPS
-    binding is created without a certificate -- attach one manually in IIS
-    Manager afterwards (Site > Bindings > edit the https binding > Select...).
+    Thumbprint of a certificate already in the machine's Personal (My) store
+    to bind to an HTTPS binding via SNI. Optional -- omit it entirely if a
+    reverse proxy or tunnel (e.g. Cloudflare Tunnel) terminates TLS in front
+    of this site, which then only needs the HTTP binding cloudflared/the
+    proxy talks to. Only pass this if IIS itself needs to serve HTTPS
+    directly to the internet.
 
 .PARAMETER SkipGit
     Skip the clone/pull step and deploy whatever is currently on disk at
@@ -83,15 +86,19 @@
     Skip the Windows Feature install/verify step.
 
 .EXAMPLE
-    .\Deploy-ToIIS.ps1 -HostName tickets.example.com -CertificateThumbprint AB12CD34EF...
-
-    First-time deploy: creates the app pool/site with a bound cert.
-
-.EXAMPLE
     .\Deploy-ToIIS.ps1 -HostName tickets.example.com
 
-    First-time deploy without a cert yet -- HTTPS binding is created without
-    one; attach a certificate manually afterwards.
+    First-time deploy behind a reverse proxy/tunnel (e.g. Cloudflare Tunnel)
+    that terminates TLS -- creates an HTTP-only site on -HttpPort (80).
+    Point the proxy/tunnel at http://localhost:80 with Host header
+    tickets.example.com.
+
+.EXAMPLE
+    .\Deploy-ToIIS.ps1 -HostName tickets.example.com -CertificateThumbprint AB12CD34EF...
+
+    First-time deploy where IIS serves HTTPS directly (no proxy/tunnel in
+    front) -- creates the app pool/site with an HTTPS binding using the
+    given certificate.
 
 .EXAMPLE
     .\Deploy-ToIIS.ps1
@@ -261,14 +268,13 @@ function Ensure-Site {
     New-Website -Name $SiteName -PhysicalPath $SitePath -ApplicationPool $AppPoolName `
         -Port $HttpPort -HostHeader $HostName | Out-Null
 
-    New-WebBinding -Name $SiteName -Protocol https -Port $HttpsPort -HostHeader $HostName -SslFlags 1
-
     if ($CertificateThumbprint) {
+        New-WebBinding -Name $SiteName -Protocol https -Port $HttpsPort -HostHeader $HostName -SslFlags 1
         Write-Host "Binding certificate $CertificateThumbprint to https/$HttpsPort ($HostName) via SNI..." -ForegroundColor Cyan
         $appId = "{4dc3e181-e14b-4a21-b022-59fc669b0914}"
         netsh http add sslcert hostnameport="${HostName}:${HttpsPort}" certhash=$CertificateThumbprint appid=$appId certstorename=MY | Out-Null
     } else {
-        Write-Warning "No -CertificateThumbprint given -- the https binding has no certificate yet. Attach one in IIS Manager: Site > Bindings > edit the https binding > Select..."
+        Write-Host "No -CertificateThumbprint given -- creating an HTTP-only binding (port $HttpPort). This is normal if a reverse proxy or tunnel (e.g. Cloudflare Tunnel) terminates TLS in front of this site -- point it at http://localhost:$HttpPort. If instead this site needs to serve HTTPS directly, re-run with -CertificateThumbprint once you have a certificate." -ForegroundColor Yellow
     }
 
     Set-ItemProperty "IIS:\Sites\$SiteName" -Name applicationDefaults.preloadEnabled -Value $true

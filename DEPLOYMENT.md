@@ -21,33 +21,88 @@ but not the URL Rewrite Module, which isn't a Windows Feature):
   If not, `Install-WindowsFeature Web-Asp-Net45` (safe to run alongside an
   existing site — it only adds the ASP.NET 4.x module to IIS).
 - **WebSockets** — `Get-WindowsFeature Web-WebSockets` (needed for SignalR).
-- **URL Rewrite Module 2.0** — `Web.config` has an HTTP→HTTPS redirect rule
-  under `<system.webServer><rewrite>`, which needs this module installed. It's
-  a separate download, not a Windows Feature:
+- **URL Rewrite Module 2.0** — `Web.config` has a `<system.webServer><rewrite>`
+  section (the HTTP→HTTPS redirect rule is disabled — see "Access via
+  Cloudflare Tunnel" below — but the section itself is still present). IIS
+  needs this module installed just to parse that section, disabled rule or
+  not. It's a separate download, not a Windows Feature:
   <https://www.iis.net/downloads/microsoft/url-rewrite>. If it's missing, IIS
-  will throw a config error on any request to the site (not just skip the
-  rule), so install it before creating the site.
+  will throw a config error on any request to the site, so install it before
+  creating the site.
 - **Git for Windows** — for cloning/pulling the repo.
-- An SSL certificate for the new site's hostname, if you want HTTPS
-  provisioned by the script. Otherwise bind one manually afterwards in IIS
-  Manager.
+- **No SSL certificate needed on IIS itself** if you're accessing through a
+  Cloudflare Tunnel (the common case — see below): Cloudflare terminates TLS
+  at its edge and `cloudflared` forwards to IIS over plain HTTP, so the site
+  only needs an HTTP binding. Only get a certificate for IIS if it will serve
+  HTTPS directly to the internet with no tunnel/proxy in front.
 
 Since another site is already on this server, the new site needs to
 coexist on shared IPs. The script binds by **hostname** (SNI / host header)
 rather than claiming a whole IP:port, so it doesn't collide with the
-existing site's bindings — you just need a DNS name for this app (e.g.
-`tickets.yourdomain.com`) pointed at the server.
+existing site's bindings — you just need a hostname for this app (e.g.
+`tickets.yourdomain.com`).
+
+## Access via Cloudflare Tunnel
+
+This is the expected setup: no inbound firewall rule or public IP binding is
+needed for this site at all. `cloudflared` on the server makes an
+**outbound-only** connection to Cloudflare; Cloudflare's edge handles the
+public HTTPS listener and DNS, and proxies matching requests down the tunnel
+to a local address you configure — here, IIS on plain HTTP.
+
+Because of this, `Web.config`'s `HTTP to HTTPS Redirect` rewrite rule is
+**disabled** in this repo. Traffic from `cloudflared` to IIS is always plain
+HTTP internally, so the rule's `SERVER_PORT_SECURE` check is always `0` at
+the origin — leaving it enabled would redirect every request forever
+(redirect → back through the tunnel → still HTTP internally → redirect
+again). Cloudflare's edge already enforces HTTPS publicly (Always Use
+HTTPS), so this is not a gap, just moved up a layer.
+
+Set up the tunnel once IIS is deployed and serving HTTP locally:
+
+```powershell
+winget install --id Cloudflare.cloudflared -e
+cloudflared tunnel login
+cloudflared tunnel create admintickets
+cloudflared tunnel route dns admintickets tickets.yourdomain.com
+```
+
+Create `C:\Windows\System32\config\systemprofile\.cloudflared\config.yml`
+(the path `cloudflared service install` will look for once installed as a
+service — or pass `--config` explicitly):
+
+```yaml
+tunnel: <tunnel-id-from-tunnel-create>
+credentials-file: C:\path\to\<tunnel-id>.json
+
+ingress:
+  - hostname: tickets.yourdomain.com
+    service: http://localhost:80
+  - service: http_status:404
+```
+
+Then install and start it as a Windows service so it survives reboots:
+
+```powershell
+cloudflared service install
+Start-Service Cloudflared
+```
+
+`tickets.yourdomain.com` must match the `-HostName` you deploy the IIS site
+with (the script's host-header binding on port 80) — that's how IIS knows
+which site to route the incoming request to once `cloudflared` hands it off
+locally.
 
 ## One-line deploy
 
 ```powershell
-.\tools\Deploy-ToIIS.ps1 -HostName tickets.yourdomain.com -CertificateThumbprint <thumbprint>
+.\tools\Deploy-ToIIS.ps1 -HostName tickets.yourdomain.com
 ```
 
-Omit `-CertificateThumbprint` to get an HTTP-only binding, then attach a
-certificate to the HTTPS binding yourself in IIS Manager afterwards (the
-script still creates the HTTPS binding shell so it stays SNI-scoped to this
-host name — see the script for details).
+This creates an HTTP-only site on port 80 — correct for the Cloudflare
+Tunnel setup above. If IIS instead needs to serve HTTPS directly to the
+internet (no tunnel/proxy in front), get a certificate and add
+`-CertificateThumbprint <thumbprint>`.
 
 Run it again any time to redeploy (`git pull` + re-sync files + recycle the
 app pool) — it's idempotent, and won't recreate the app pool or site if they
@@ -82,7 +137,8 @@ here.
    (`TicketcoPoller`) that stops if the pool idles out or recycles without
    preload.
 7. Creates the `admintickets` site if it doesn't exist, bound to the given
-   `-HostName` on HTTP (80) and HTTPS (443, SNI), with **Preload Enabled**.
+   `-HostName` on HTTP (80), with **Preload Enabled**. Adds an HTTPS (443,
+   SNI) binding too, only if `-CertificateThumbprint` was given.
 8. Recycles the app pool so a redeploy picks up the new `bin\admintickets.dll`
    immediately.
 
@@ -143,8 +199,10 @@ the old ones being live credentials.
 
 ## Verify
 
-- Browse to the site over HTTPS — `dash_display.aspx` should connect via
-  SignalR and paint on load.
+- Browse to `https://tickets.yourdomain.com` (through the tunnel — Cloudflare
+  serves the public HTTPS) — `dash_display.aspx` should connect via SignalR
+  and paint on load. `http://localhost` on the server itself should also
+  work directly (that's what `cloudflared` talks to).
 - If `TicketcoAutoStart=false` in `Web.config`, open `dash_control.aspx` and
   press **Start**.
 - Confirm the app pool's `w3wp.exe` process stays alive between polls
