@@ -43,7 +43,10 @@ bin\roslyn\vbc.exe /noconfig /target:library /out:bin\admintickets.dll ^
 
 Copy to the server (full list in `deploy-manifest.md`): `bin\admintickets.dll`,
 the two `.aspx` files, `Web.config`, and the `Scripts\ css\ images\` assets.
-Set the `Ticketco*` keys in `Web.config` and recycle the app pool.
+`Web.config` itself carries no secrets — on first deploy, create
+`secrets.config` and `connectionStrings.config` next to it on the server
+(from the `.example` templates; see `DEPLOYMENT.md`) and fill in the real
+`TicketcoApiToken` and DB connection string. Then recycle the app pool.
 
 ## Adding a server control later
 

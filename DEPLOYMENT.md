@@ -7,8 +7,10 @@ alongside what's already there; nothing about the existing site or the
 server-wide IIS config is touched.
 
 The fast path is `tools\Deploy-ToIIS.ps1` (see below). This document also
-covers the manual steps it automates, and the two things the script can't do
-for you: pointing the DB connection through WireGuard, and rotating secrets.
+covers the manual steps it automates, and the one thing the script can't do
+for you: filling in the real secrets on first deploy (`secrets.config` /
+`connectionStrings.config`, including pointing the DB connection through
+WireGuard).
 
 ## Prerequisites
 
@@ -67,42 +69,52 @@ here.
    `images\ground6.png` — into `C:\inetpub\wwwroot\admintickets` via
    `robocopy /MIR`, matching `deploy-manifest.md`. Source files (`.vb`,
    `.sln`, `.vbproj`, `*.sql`, this doc, etc.) never reach the web root.
-5. Creates the `admintickets` app pool if it doesn't exist, with
+5. If `secrets.config` / `connectionStrings.config` don't already exist in
+   the site folder, seeds them from the `.example` templates (with
+   placeholder values) so the app doesn't fail to start with a missing-file
+   config error. **Warns you to fill in the real values** — see the next
+   section. Existing `secrets.config` / `connectionStrings.config` on the
+   server are never touched by the script (they're gitignored, so they
+   don't exist in the git checkout to overwrite them with).
+6. Creates the `admintickets` app pool if it doesn't exist, with
    `managedRuntimeVersion=v4.0`, `startMode=AlwaysRunning`,
    `idleTimeout=0` — the app runs a server-side polling timer
    (`TicketcoPoller`) that stops if the pool idles out or recycles without
    preload.
-6. Creates the `admintickets` site if it doesn't exist, bound to the given
+7. Creates the `admintickets` site if it doesn't exist, bound to the given
    `-HostName` on HTTP (80) and HTTPS (443, SNI), with **Preload Enabled**.
-7. Recycles the app pool so a redeploy picks up the new `bin\admintickets.dll`
+8. Recycles the app pool so a redeploy picks up the new `bin\admintickets.dll`
    immediately.
 
-It does **not** touch `Web.config`'s connection string or app secrets — do
-that once, manually, per the next section (re-deploys via the script
-preserve your edits, since `Web.config` in the deployed site folder is not
-overwritten by source... actually it **is** overwritten by the robocopy step,
-since the file ships from the repo. See the note below.)
+`Web.config` itself carries no secrets any more — it points at
+`secrets.config` (`<appSettings file="secrets.config">`) and
+`connectionStrings.config` (`<connectionStrings
+configSource="connectionStrings.config">`), both of which are gitignored and
+live only on the server. That means redeploying (`git pull` + resync +
+recycle) is now safe to run at any time without clobbering the DB connection
+string or the API token — only step 5, above, ever touches those files, and
+only when they're missing.
 
-> **Note on `Web.config` edits surviving redeploys:** the script robocopies
-> `Web.config` from the git checkout into the site every run, so any edits
-> you make directly in `C:\inetpub\wwwroot\admintickets\Web.config` (the
-> connection string, rotated secrets) will be **overwritten on the next
-> redeploy**. Either commit the production connection string/secrets to a
-> branch you deploy from, or keep a `Web.config` edit step as part of your
-> deploy runbook and reapply it after each `Deploy-ToIIS.ps1` run. The
-> repo's own `Web.config` comments suggest the longer-term fix: move secrets
-> into an uncommitted `secrets.config` referenced via `<appSettings
-> file="secrets.config">`, which the deploy script's robocopy would then
-> leave alone.
+## Fill in the real secrets (first deploy only)
 
-## Point the DB connection through WireGuard
-
-Once the WireGuard tunnel to the DB host is up, edit the connection string
-in the deployed `Web.config`:
+On the very first deploy, edit the two files the script seeded from
+`*.example` templates:
 
 ```
-C:\inetpub\wwwroot\admintickets\Web.config
+C:\inetpub\wwwroot\admintickets\secrets.config
+C:\inetpub\wwwroot\admintickets\connectionStrings.config
 ```
+
+**`secrets.config`** — the (rotated) TicketCo API token:
+
+```xml
+<appSettings>
+  <add key="TicketcoApiToken" value="<real-token>" />
+</appSettings>
+```
+
+**`connectionStrings.config`** — the DB connection, pointed at the
+WireGuard tunnel IP once that's up, with a rotated password:
 
 ```xml
 <connectionStrings>
@@ -110,13 +122,17 @@ C:\inetpub\wwwroot\admintickets\Web.config
 </connectionStrings>
 ```
 
-Then recycle the app pool (`Restart-WebAppPool admintickets`) to pick it up.
+Then recycle the app pool (`Restart-WebAppPool admintickets`) to pick both up.
+
+`REVIEW.md` also flags cleartext app-login passwords that may still be
+inline in `Web.config`'s `<credentials passwordFormat="Clear">` block (not
+covered by this secrets split) — rotate those too while you're here.
 
 ## Rotate secrets while you're moving servers
 
-`REVIEW.md` already flags these as live secrets sitting in git history — a
-server move is a convenient, low-disruption time to rotate them, since
-you're editing `Web.config` for the DB host change anyway:
+The values that were in the old committed `Web.config` are still live in git
+history — a server move is a convenient, low-disruption time to rotate them,
+since you're filling in `secrets.config`/`connectionStrings.config` anyway:
 
 - MySQL password for `qosfclivedb`
 - `TicketcoApiToken` (TicketCo API token)

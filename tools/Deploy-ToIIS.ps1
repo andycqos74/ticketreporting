@@ -8,8 +8,8 @@
     (SNI), and never touches any other site or app pool on the box. Safe to
     re-run -- each run pulls the latest code, re-syncs the deployed files,
     and recycles the app pool. It does not create/renew the app pool or site
-    if they already exist, and it does not touch Web.config's connection
-    string or secrets (see DEPLOYMENT.md).
+    if they already exist, and it never overwrites secrets.config /
+    connectionStrings.config once they've been filled in (see DEPLOYMENT.md).
 
     Steps:
       1. Verify running elevated.
@@ -20,14 +20,22 @@
       4. robocopy /MIR the deploy set (bin\, the two dashboard .aspx files,
          Global.asax, Web.config, Scripts\, css\jquery-ui.min.css,
          images\ground6.png) into -SitePath -- matches deploy-manifest.md.
-      5. Create the app pool if missing: managedRuntimeVersion v4.0,
+      5. Seed secrets.config / connectionStrings.config in -SitePath from the
+         repo's *.example templates, but ONLY if they don't already exist --
+         they are gitignored, so they never come from the git checkout and
+         are never overwritten by a redeploy once created. Web.config points
+         at both (<appSettings file="secrets.config">,
+         <connectionStrings configSource="connectionStrings.config">), so
+         the app won't start until the real values are filled in -- see
+         DEPLOYMENT.md.
+      6. Create the app pool if missing: managedRuntimeVersion v4.0,
          startMode AlwaysRunning, idleTimeout 0 (the app runs a server-side
          polling timer that needs the pool to stay up).
-      6. Create the site if missing, bound to -HostName on -HttpPort and
+      7. Create the site if missing, bound to -HostName on -HttpPort and
          -HttpsPort (SNI), with Preload Enabled. If -CertificateThumbprint is
          given, binds it to the HTTPS binding via netsh (SNI-scoped, so it
          doesn't disturb bindings on other sites sharing the same IP/port).
-      7. Recycle the app pool so a new bin\admintickets.dll takes effect.
+      8. Recycle the app pool so a new bin\admintickets.dll takes effect.
 
 .PARAMETER RepoUrl
     Git URL to clone from. Defaults to the GitHub repo.
@@ -198,6 +206,30 @@ function Sync-DeployFiles {
     Write-Host "Deploy set synced." -ForegroundColor Green
 }
 
+function Ensure-SecretsFiles {
+    $secretsPath = Join-Path $SitePath "secrets.config"
+    $secretsExample = Join-Path $SourcePath "secrets.config.example"
+    if (-not (Test-Path $secretsPath)) {
+        if (Test-Path $secretsExample) {
+            Copy-Item $secretsExample $secretsPath
+            Write-Warning "Seeded $secretsPath from secrets.config.example -- it has a PLACEHOLDER TicketcoApiToken. Edit it with the real (rotated) token before the app will work."
+        } else {
+            Write-Warning "secrets.config.example not found in $SourcePath -- create $secretsPath by hand (see DEPLOYMENT.md)."
+        }
+    }
+
+    $connStringsPath = Join-Path $SitePath "connectionStrings.config"
+    $connStringsExample = Join-Path $SourcePath "connectionStrings.config.example"
+    if (-not (Test-Path $connStringsPath)) {
+        if (Test-Path $connStringsExample) {
+            Copy-Item $connStringsExample $connStringsPath
+            Write-Warning "Seeded $connStringsPath from connectionStrings.config.example -- it has PLACEHOLDER DB credentials. Edit it with the real (WireGuard-routed, rotated) connection string before the app will work."
+        } else {
+            Write-Warning "connectionStrings.config.example not found in $SourcePath -- create $connStringsPath by hand (see DEPLOYMENT.md)."
+        }
+    }
+}
+
 function Ensure-AppPool {
     Import-Module WebAdministration
 
@@ -257,11 +289,11 @@ if (-not $SkipFeatureCheck) {
 
 Sync-Repo
 Sync-DeployFiles
+Ensure-SecretsFiles
 Ensure-AppPool
 Ensure-Site
 Restart-Pool
 
 Write-Host ""
 Write-Host "Deploy complete." -ForegroundColor Green
-Write-Host "Remember: Web.config's DB connection string and secrets are NOT managed by this script." -ForegroundColor Yellow
-Write-Host "See DEPLOYMENT.md for the WireGuard connection-string update and secret rotation steps." -ForegroundColor Yellow
+Write-Host "If secrets.config / connectionStrings.config were just seeded, fill in the real values (see DEPLOYMENT.md) and recycle the app pool again." -ForegroundColor Yellow
