@@ -9,16 +9,30 @@ Reduced to the live dashboard + TicketCo poller. After building
 |------|-------|
 | `bin\` (all `*.dll`) | Rebuilt `admintickets.dll` + MySql.Data, Newtonsoft.Json, SignalR, Owin, Microsoft.Web.Infrastructure. |
 | `bin\roslyn\` | **Required** — `Web.config` `<system.codedom>` uses it to compile `.aspx` at runtime. |
-| `dash_display.aspx`, `dash_control.aspx` | The two pages. |
+| `dash_display.aspx`, `dash_control.aspx`, `2026print-tickets.aspx` | The three pages. |
 | `Global.asax` | Markup (its `.vb` is in the DLL). |
-| `Web.config` | With the rotated `TicketcoApiToken` + DB connection string. |
+| `Web.config` | No secrets in it — points at `secrets.config` / `connectionStrings.config` (see below). |
 | `Scripts\` | jquery, jquery-ui, signalR client. |
-| `css\jquery-ui.min.css`, `images\ground6.png` | Assets the dashboard references (Bootstrap is loaded from CDN). |
+| `css\jquery-ui.min.css`, `css\all.min.css`, `css\bs4_custom.css` | Dashboard + ticket-printing styles (Bootstrap itself is loaded from CDN). |
+| `webfonts\` | Font Awesome, referenced by `css\all.min.css` — needed by the ticket-printing page. |
+| `images\ground6.png` | Dashboard background asset. |
+
+## 🔐 Create on the server, never ship from git
+
+`secrets.config` and `connectionStrings.config` hold the real
+`TicketcoApiToken` and DB connection string. Both are gitignored — they
+don't exist in the repo at all, so a `git clone`/`git pull` never touches
+them once they're created on the server. First deploy: copy
+`secrets.config.example` → `secrets.config` and
+`connectionStrings.config.example` → `connectionStrings.config` next to
+`Web.config` on the server, and fill in the real values (see
+`DEPLOYMENT.md`). The app won't start without them, since `Web.config`
+references both by name.
 
 ## ❌ Don't ship (source/dev only)
 
 `*.vb`, `*.designer.vb`, `packages.config`, `*.sln`, `*.vbproj`, `build.bat`,
-`*.md`, `.gitignore`. Optional: `bin\*.pdb`, `bin\*.xml`.
+`*.md`, `.gitignore`, `*.example`. Optional: `bin\*.pdb`, `bin\*.xml`.
 
 ## Keep the poller alive on IIS
 
@@ -29,9 +43,10 @@ after every recycle.
 ## Example publish + copy
 
 ```cmd
-robocopy . \\SERVER\wwwroot\admintickets dash_display.aspx dash_control.aspx Global.asax Web.config
+robocopy . \\SERVER\wwwroot\admintickets dash_display.aspx dash_control.aspx 2026print-tickets.aspx Global.asax Web.config
 robocopy bin \\SERVER\wwwroot\admintickets\bin /MIR /XF *.pdb *.xml
 robocopy Scripts \\SERVER\wwwroot\admintickets\Scripts /MIR
-robocopy css \\SERVER\wwwroot\admintickets\css jquery-ui.min.css
+robocopy css \\SERVER\wwwroot\admintickets\css jquery-ui.min.css all.min.css bs4_custom.css
+robocopy webfonts \\SERVER\wwwroot\admintickets\webfonts /MIR
 robocopy images \\SERVER\wwwroot\admintickets\images ground6.png
 ```

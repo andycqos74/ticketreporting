@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Copy this file to connectionStrings.config (same folder as Web.config) and
+  fill in the real host/credentials. connectionStrings.config is gitignored,
+  it must never be committed. Web.config points at it via
+  <connectionStrings configSource="connectionStrings.config" />.
+
+  This file must contain ONLY the <connectionStrings> element (that's a
+  requirement of configSource); do not add other sections to it.
+-->
+<connectionStrings>
+  <add name="QosTickets" connectionString="Data Source=REPLACE_WITH_DB_HOST;port=3306;Initial Catalog=qosfctickets;User Id=REPLACE_WITH_DB_USER;password=REPLACE_WITH_DB_PASSWORD" />
+</connectionStrings>

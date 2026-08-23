@@ -1,3 +1,18 @@
+# Tools
+
+## `Deploy-ToIIS.ps1` -- deploy to a Windows Server / IIS
+
+Additive-only deploy/redeploy script for a server that already has IIS
+running (alongside other sites). Pulls the repo, syncs the deploy-manifest
+file set into the site folder, and creates the app pool/site (host-header
+bound, so it doesn't disturb other sites) if they don't already exist. See
+`../DEPLOYMENT.md` for the full runbook and `.\Deploy-ToIIS.ps1 -?` for
+parameters.
+
+```powershell
+.\tools\Deploy-ToIIS.ps1 -HostName tickets.example.com -CertificateThumbprint <thumbprint>
+```
+
 # Three-season attendance report
 
 `Get-SeasonAttendanceReport.ps1` builds an attendance report straight from the
