@@ -119,30 +119,39 @@ here.
    present; doesn't touch other features or other sites).
 3. Clones the repo to `C:\src\ticketreporting` (or pulls if it already
    exists there).
-4. Copies the deploy set — `bin\`, `dash_display.aspx`, `dash_control.aspx`,
+4. **Rebuilds `bin\admintickets.dll` from source**, using `bin\roslyn\vbc.exe`
+   (no MSBuild/Visual Studio install needed). The DLL is also committed to
+   git for convenience, but a committed DLL can silently drift out of sync
+   with the `.vb` source if someone forgets to rebuild before committing —
+   that already happened once in this repo and broke the SignalR hub's
+   client-side proxy (`chat.server.xyz is not a function`) in a way that
+   looked like a config/deploy problem rather than a stale-binary problem.
+   Rebuilding on every deploy makes that impossible. Skip with `-SkipBuild`
+   only if you've built and verified the DLL yourself.
+5. Copies the deploy set — `bin\`, `dash_display.aspx`, `dash_control.aspx`,
    `2026print-tickets.aspx`, `Global.asax`, `Web.config`, `Scripts\`,
    `css\` (jquery-ui/Font Awesome/Bootstrap-custom styles), `webfonts\`
    (Font Awesome, needed by the ticket-printing page), `images\ground6.png`
    — into `C:\inetpub\wwwroot\admintickets`, matching `deploy-manifest.md`.
    Source files (`.vb`, `.sln`, `.vbproj`, `*.sql`, this doc, etc.) never
    reach the web root.
-5. If `secrets.config` / `connectionStrings.config` don't already exist in
+6. If `secrets.config` / `connectionStrings.config` don't already exist in
    the site folder, seeds them from the `.example` templates (with
    placeholder values) so the app doesn't fail to start with a missing-file
    config error. **Warns you to fill in the real values** — see the next
    section. Existing `secrets.config` / `connectionStrings.config` on the
    server are never touched by the script (they're gitignored, so they
    don't exist in the git checkout to overwrite them with).
-6. Creates the `admintickets` app pool if it doesn't exist, with
+7. Creates the `admintickets` app pool if it doesn't exist, with
    `managedRuntimeVersion=v4.0`, `startMode=AlwaysRunning`,
    `idleTimeout=0` — the app runs a server-side polling timer
    (`TicketcoPoller`) that stops if the pool idles out or recycles without
    preload.
-7. Creates the `admintickets` site if it doesn't exist, bound to the given
+8. Creates the `admintickets` site if it doesn't exist, bound to the given
    `-HostName` on HTTP (80), with **Preload Enabled**. Adds an HTTPS (443,
    SNI) binding too, only if `-CertificateThumbprint` was given.
-8. Recycles the app pool so a redeploy picks up the new `bin\admintickets.dll`
-   immediately.
+9. Recycles the app pool so the newly rebuilt `bin\admintickets.dll` takes
+   effect.
 
 `Web.config` itself carries no secrets any more — it points at
 `secrets.config` (`<appSettings file="secrets.config">`) and
@@ -213,7 +222,6 @@ the old ones being live credentials.
 
 ## Future deploys
 
-Re-run `tools\Deploy-ToIIS.ps1`. If only `.vb` source changed, rebuild first
-(`build.bat`, needs MSBuild / VS Build Tools) so `bin\admintickets.dll` is
-current before the script copies it — the script does not compile anything
-itself.
+Just re-run `tools\Deploy-ToIIS.ps1` — it pulls the branch, rebuilds
+`bin\admintickets.dll` from source itself (via `bin\roslyn\vbc.exe`), re-syncs
+files, and recycles the app pool. No separate build step needed.

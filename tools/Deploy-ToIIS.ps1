@@ -6,10 +6,11 @@
 .DESCRIPTION
     Additive-only: creates a new app pool and a new site bound by hostname
     (SNI), and never touches any other site or app pool on the box. Safe to
-    re-run -- each run pulls the latest code, re-syncs the deployed files,
-    and recycles the app pool. It does not create/renew the app pool or site
-    if they already exist, and it never overwrites secrets.config /
-    connectionStrings.config once they've been filled in (see DEPLOYMENT.md).
+    re-run -- each run pulls the latest code, rebuilds bin\admintickets.dll
+    from source, re-syncs the deployed files, and recycles the app pool. It
+    does not create/renew the app pool or site if they already exist, and it
+    never overwrites secrets.config / connectionStrings.config once they've
+    been filled in (see DEPLOYMENT.md).
 
     Steps:
       1. Verify running elevated.
@@ -17,11 +18,19 @@
          (no-op if already present).
       3. git clone (first run) or git fetch + reset (later runs) the repo
          into -SourcePath, on -Branch.
-      4. robocopy the deploy set (bin\, dash_display.aspx, dash_control.aspx,
+      4. Rebuild bin\admintickets.dll FROM SOURCE using the repo's own
+         bin\roslyn\vbc.exe (no MSBuild/Visual Studio install needed) --
+         unless -SkipBuild is given. This exists because a *committed*
+         bin\admintickets.dll can silently go stale relative to the .vb
+         source (nothing enforces they're rebuilt together), which breaks
+         things like the SignalR hub's client-side proxy in ways that are
+         easy to misdiagnose as a deploy/config problem. Rebuilding here
+         removes that whole class of bug.
+      5. robocopy the deploy set (bin\, dash_display.aspx, dash_control.aspx,
          2026print-tickets.aspx, Global.asax, Web.config, Scripts\, css\,
          webfonts\, images\ground6.png) into -SitePath -- matches
          deploy-manifest.md.
-      5. Seed secrets.config / connectionStrings.config in -SitePath from the
+      6. Seed secrets.config / connectionStrings.config in -SitePath from the
          repo's *.example templates, but ONLY if they don't already exist --
          they are gitignored, so they never come from the git checkout and
          are never overwritten by a redeploy once created. Web.config points
@@ -29,15 +38,15 @@
          <connectionStrings configSource="connectionStrings.config">), so
          the app won't start until the real values are filled in -- see
          DEPLOYMENT.md.
-      6. Create the app pool if missing: managedRuntimeVersion v4.0,
+      7. Create the app pool if missing: managedRuntimeVersion v4.0,
          startMode AlwaysRunning, idleTimeout 0 (the app runs a server-side
          polling timer that needs the pool to stay up).
-      7. Create the site if missing, bound to -HostName on -HttpPort, with
+      8. Create the site if missing, bound to -HostName on -HttpPort, with
          Preload Enabled. If -CertificateThumbprint is given, also adds an
          HTTPS binding (SNI, -HttpsPort) with that cert. Otherwise the site
          is HTTP-only, which is correct when a TLS-terminating reverse proxy
          or tunnel (e.g. Cloudflare Tunnel) sits in front of it.
-      8. Recycle the app pool so a new bin\admintickets.dll takes effect.
+      9. Recycle the app pool so the new bin\admintickets.dll takes effect.
 
 .PARAMETER RepoUrl
     Git URL to clone from. Defaults to the GitHub repo.
@@ -86,6 +95,14 @@
 .PARAMETER SkipFeatureCheck
     Skip the Windows Feature install/verify step.
 
+.PARAMETER SkipBuild
+    Skip rebuilding bin\admintickets.dll from source and deploy whatever
+    bin\admintickets.dll is checked out as-is. Not recommended: a checked-out
+    DLL can be stale relative to the .vb source (nothing enforces they're
+    committed together). Use this only if bin\roslyn\vbc.exe is unavailable
+    for some reason, or you've already built it yourself and know it's
+    current.
+
 .EXAMPLE
     .\Deploy-ToIIS.ps1 -HostName tickets.example.com
 
@@ -109,9 +126,8 @@
 
 .NOTES
     Run elevated (Administrator). Idempotent by design -- safe to schedule or
-    re-run by hand after every merge to -Branch. Does not compile anything;
-    run build.bat first if .vb source changed and bin\admintickets.dll needs
-    regenerating.
+    re-run by hand after every merge to -Branch. Rebuilds bin\admintickets.dll
+    from source on every run (see -SkipBuild).
 #>
 [CmdletBinding()]
 param(
@@ -126,7 +142,8 @@ param(
     [int]$HttpsPort = 443,
     [string]$CertificateThumbprint,
     [switch]$SkipGit,
-    [switch]$SkipFeatureCheck
+    [switch]$SkipFeatureCheck,
+    [switch]$SkipBuild
 )
 
 $ErrorActionPreference = "Stop"
@@ -189,6 +206,49 @@ function Sync-Repo {
         Write-Host "Cloning $RepoUrl to $SourcePath (branch $Branch)..." -ForegroundColor Cyan
         New-Item -ItemType Directory -Path $SourcePath -Force | Out-Null
         git clone --branch $Branch $RepoUrl $SourcePath
+    }
+}
+
+function Build-Dll {
+    if ($SkipBuild) {
+        Write-Host "Skipping build (per -SkipBuild) -- deploying bin\admintickets.dll as checked out. This can be STALE relative to the .vb source if it wasn't rebuilt before committing; verify it matches what you expect." -ForegroundColor Yellow
+        return
+    }
+
+    $vbc = Join-Path $SourcePath "bin\roslyn\vbc.exe"
+    if (-not (Test-Path $vbc)) {
+        throw "bin\roslyn\vbc.exe not found in $SourcePath -- cannot rebuild. Pass -SkipBuild to deploy the checked-out bin\admintickets.dll as-is (not recommended -- it can silently be stale relative to source)."
+    }
+
+    Write-Host "Rebuilding bin\admintickets.dll from source (bin\roslyn\vbc.exe)..." -ForegroundColor Cyan
+    Push-Location $SourcePath
+    try {
+        $fxDir = Join-Path $env:WINDIR "Microsoft.NET\Framework64\v4.0.30319"
+        $sourceFiles = @(
+            "ChatHubticketco.vb", "Global.asax.vb", "Startup.vb",
+            "UC_footer.ascx.vb", "UC_header.ascx.vb",
+            "dash_control.aspx.designer.vb", "dash_control.aspx.vb",
+            "dash_display.aspx.designer.vb", "dash_display.aspx.vb",
+            "2026print-tickets.aspx.designer.vb", "2026print-tickets.aspx.vb"
+        )
+        $references = @(
+            "System.dll", "System.Core.dll", "System.Data.dll", "System.Configuration.dll", "System.Web.dll",
+            "MySql.Data.dll", "Newtonsoft.Json.dll", "Microsoft.AspNet.SignalR.Core.dll",
+            "Microsoft.AspNet.SignalR.SystemWeb.dll", "Microsoft.Owin.dll",
+            "Microsoft.Owin.Host.SystemWeb.dll", "Owin.dll", "Microsoft.Web.Infrastructure.dll"
+        ) | ForEach-Object { "/r:$_" }
+
+        & $vbc /noconfig /target:library /out:bin\admintickets.dll `
+            /rootnamespace:admintickets '/define:_MYTYPE="Web"' /optioninfer+ /langversion:14 `
+            /imports:Microsoft.VisualBasic,System,System.Collections,System.Collections.Generic,System.Data,System.Diagnostics,System.Linq,System.Web,System.Web.UI,System.Web.UI.HtmlControls,System.Web.UI.WebControls `
+            "/libpath:${fxDir};bin" `
+            @references `
+            @sourceFiles
+
+        if ($LASTEXITCODE -ne 0) { throw "vbc.exe build failed (exit $LASTEXITCODE) -- see compiler output above." }
+        Write-Host "Build OK -> bin\admintickets.dll" -ForegroundColor Green
+    } finally {
+        Pop-Location
     }
 }
 
@@ -298,6 +358,7 @@ if (-not $SkipFeatureCheck) {
 }
 
 Sync-Repo
+Build-Dll
 Sync-DeployFiles
 Ensure-SecretsFiles
 Ensure-AppPool

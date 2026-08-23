@@ -1,7 +1,12 @@
 # Deploy Manifest
 
-Reduced to the live dashboard + TicketCo poller. After building
-`bin\admintickets.dll` (see `BUILD.md`), copy these to the server.
+Reduced to the live dashboard + TicketCo poller. **Always rebuild
+`bin\admintickets.dll`** (see `BUILD.md`) before copying to the server —
+don't rely on the DLL as checked out of git. It's committed for convenience,
+but nothing enforces it staying in sync with the `.vb` source; it has
+already gone stale once and broken the SignalR hub's client-side proxy in a
+way that looked like a config problem rather than a stale-binary one.
+`tools\Deploy-ToIIS.ps1` rebuilds it automatically for you.
 
 ## ✅ Ship
 
