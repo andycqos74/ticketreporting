@@ -232,7 +232,7 @@ function Build-Dll {
             "2026print-tickets.aspx.designer.vb", "2026print-tickets.aspx.vb"
         )
         $references = @(
-            "System.dll", "System.Core.dll", "System.Data.dll", "System.Configuration.dll", "System.Web.dll",
+            "System.dll", "System.Core.dll", "System.Data.dll", "System.Xml.dll", "System.Configuration.dll", "System.Web.dll",
             "MySql.Data.dll", "Newtonsoft.Json.dll", "Microsoft.AspNet.SignalR.Core.dll",
             "Microsoft.AspNet.SignalR.SystemWeb.dll", "Microsoft.Owin.dll",
             "Microsoft.Owin.Host.SystemWeb.dll", "Owin.dll", "Microsoft.Web.Infrastructure.dll"

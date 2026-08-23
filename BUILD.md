@@ -49,7 +49,7 @@ bin\roslyn\vbc.exe /noconfig /target:library /out:bin\admintickets.dll ^
   /rootnamespace:admintickets /define:"_MYTYPE=\"Web\"" /optioninfer+ /langversion:14 ^
   /imports:Microsoft.VisualBasic,System,System.Collections,System.Collections.Generic,System.Data,System.Diagnostics,System.Linq,System.Web,System.Web.UI,System.Web.UI.HtmlControls,System.Web.UI.WebControls ^
   /libpath:"%WINDIR%\Microsoft.NET\Framework64\v4.0.30319";bin ^
-  /r:System.dll /r:System.Core.dll /r:System.Data.dll /r:System.Configuration.dll /r:System.Web.dll ^
+  /r:System.dll /r:System.Core.dll /r:System.Data.dll /r:System.Xml.dll /r:System.Configuration.dll /r:System.Web.dll ^
   /r:%extPath% /r:%svcPath% ^
   /r:MySql.Data.dll /r:Newtonsoft.Json.dll /r:Microsoft.AspNet.SignalR.Core.dll ^
   /r:Microsoft.AspNet.SignalR.SystemWeb.dll /r:Microsoft.Owin.dll ^
