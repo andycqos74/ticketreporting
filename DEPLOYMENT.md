@@ -129,12 +129,12 @@ here.
    Rebuilding on every deploy makes that impossible. Skip with `-SkipBuild`
    only if you've built and verified the DLL yourself.
 5. Copies the deploy set — `bin\`, `dash_display.aspx`, `dash_control.aspx`,
-   `2026print-tickets.aspx`, `Global.asax`, `Web.config`, `Scripts\`,
-   `css\` (jquery-ui/Font Awesome/Bootstrap-custom styles), `webfonts\`
-   (Font Awesome, needed by the ticket-printing page), `images\ground6.png`
-   — into `C:\inetpub\wwwroot\admintickets`, matching `deploy-manifest.md`.
-   Source files (`.vb`, `.sln`, `.vbproj`, `*.sql`, this doc, etc.) never
-   reach the web root.
+   `2026print-tickets.aspx`, `UC_footer.ascx`, `UC_header.ascx`, `Global.asax`,
+   `Web.config`, `Scripts\`, `css\` (jquery-ui/Font Awesome/Bootstrap-custom
+   styles), `webfonts\` (Font Awesome, needed by the ticket-printing page),
+   `images\ground6.png` — into `C:\inetpub\wwwroot\admintickets`, matching
+   `deploy-manifest.md`. Source files (`.vb`, `.sln`, `.vbproj`, `*.sql`,
+   this doc, etc.) never reach the web root.
 6. If `secrets.config` / `connectionStrings.config` don't already exist in
    the site folder, seeds them from the `.example` templates (with
    placeholder values) so the app doesn't fail to start with a missing-file

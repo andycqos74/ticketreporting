@@ -270,7 +270,7 @@ function Sync-DeployFiles {
     Write-Host "Syncing deploy set into $SitePath..." -ForegroundColor Cyan
     New-Item -ItemType Directory -Path $SitePath -Force | Out-Null
 
-    robocopy $SourcePath $SitePath dash_display.aspx dash_control.aspx 2026print-tickets.aspx Global.asax Web.config /NFL /NDL /NJH | Out-Null
+    robocopy $SourcePath $SitePath dash_display.aspx dash_control.aspx 2026print-tickets.aspx UC_footer.ascx UC_header.ascx Global.asax Web.config /NFL /NDL /NJH | Out-Null
     if ($LASTEXITCODE -ge 8) { throw "robocopy failed copying top-level files (exit $LASTEXITCODE)" }
 
     robocopy (Join-Path $SourcePath "bin") (Join-Path $SitePath "bin") /MIR /XF *.pdb *.xml /NFL /NDL /NJH | Out-Null
