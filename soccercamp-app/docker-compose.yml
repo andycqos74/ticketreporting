@@ -12,11 +12,11 @@ services:
 
 networks:
   shared_net:
-    # This must be the Docker network your existing MySQL container is
-    # already on, so this app can reach it by container/service name (DB_HOST
-    # in .env). Find it with:
-    #   docker inspect <mysql_container_name> --format '{{json .NetworkSettings.Networks}}'
-    # then replace "shared_net" below with the real network name (or rename
-    # this entry's value to match), and set external: true.
+    # This must be the Docker network the mysql-tickets container is already
+    # on, so this app can reach it by container name (DB_HOST=mysql-tickets
+    # in .env). Find/create it in Portainer under Networks, or with:
+    #   docker inspect mysql-tickets --format '{{json .NetworkSettings.Networks}}'
+    # Replace "shared_net" below with the real network name, keep
+    # external: true (this stack must not create/own the network).
     external: true
     name: shared_net
