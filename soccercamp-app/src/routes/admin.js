@@ -8,17 +8,19 @@ router.get('/', (req, res) => {
     seasonPassId: SEASON_PASS_ID,
     ticketTypeFilter: TICKET_TYPE_FILTER,
     result: null,
+    sample: null,
     error: null,
   });
 });
 
 router.post('/sync', async (req, res) => {
   try {
-    const count = await syncSoccerCampTickets();
+    const { matched, sample } = await syncSoccerCampTickets();
     res.render('admin', {
       seasonPassId: SEASON_PASS_ID,
       ticketTypeFilter: TICKET_TYPE_FILTER,
-      result: `Sync complete at ${new Date().toLocaleTimeString('en-GB')}: ${count} ticket(s) matched "${TICKET_TYPE_FILTER}".`,
+      result: `Sync complete at ${new Date().toLocaleTimeString('en-GB')}: ${matched} ticket(s) matched "${TICKET_TYPE_FILTER}".`,
+      sample,
       error: null,
     });
   } catch (err) {
@@ -26,6 +28,7 @@ router.post('/sync', async (req, res) => {
       seasonPassId: SEASON_PASS_ID,
       ticketTypeFilter: TICKET_TYPE_FILTER,
       result: null,
+      sample: null,
       error: `Sync failed: ${err.message}`,
     });
   }

@@ -74,6 +74,7 @@ async function syncSoccerCampTickets() {
 
   let page = 1;
   let matched = 0;
+  let sample = null; // diagnostic: what the first matched item actually looked like
 
   for (;;) {
     const items = await fetchPage(token, page);
@@ -86,6 +87,17 @@ async function syncSoccerCampTickets() {
       const uuid = str(item, 'uuid');
       if (!uuid) continue; // no stable key to upsert on
 
+      const email = nullIfEmpty(emailOf(item).trim().toLowerCase());
+
+      if (!sample) {
+        sample = {
+          keys: Object.keys(item),
+          buyer_email: item.buyer_email,
+          holder_email: item.holder_email,
+          resolvedEmail: email,
+        };
+      }
+
       await pool.execute(UPSERT_SQL, [
         uuid,
         str(item, 'ref_number'),
@@ -96,7 +108,7 @@ async function syncSoccerCampTickets() {
         str(item, 'holder_last_name'),
         str(item, 'buyer_first_name'),
         str(item, 'buyer_last_name'),
-        nullIfEmpty(emailOf(item).trim().toLowerCase()),
+        email,
       ]);
       matched += 1;
     }
@@ -104,7 +116,7 @@ async function syncSoccerCampTickets() {
     page += 1;
   }
 
-  return matched;
+  return { matched, sample };
 }
 
 module.exports = { syncSoccerCampTickets, SEASON_PASS_ID, TICKET_TYPE_FILTER };

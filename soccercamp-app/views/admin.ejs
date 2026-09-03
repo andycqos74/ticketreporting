@@ -20,4 +20,16 @@
   <p class="mt-3 font-weight-bold text-danger"><%= error %></p>
 <% } %>
 
+<% if (sample) { %>
+  <div class="card mt-3">
+    <div class="card-body">
+      <h5 class="card-title">Diagnostic: first matched ticket</h5>
+      <p class="card-text mb-1"><strong>buyer_email field:</strong> <%= JSON.stringify(sample.buyer_email) %></p>
+      <p class="card-text mb-1"><strong>holder_email field:</strong> <%= JSON.stringify(sample.holder_email) %></p>
+      <p class="card-text mb-1"><strong>Email stored:</strong> <%= sample.resolvedEmail || '(none - all candidate fields were empty)' %></p>
+      <p class="card-text mb-0"><strong>All fields on this item:</strong> <%= sample.keys.join(', ') %></p>
+    </div>
+  </div>
+<% } %>
+
 <%- include('partials/foot') %>
