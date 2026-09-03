@@ -15,7 +15,7 @@ const pool = mysql.createPool({
 async function ensureSchema() {
   const schema = fs.readFileSync(path.join(__dirname, '..', '..', 'schema.sql'), 'utf8')
     .split('\n')
-    .filter((line) => !line.trim().startsWith('--'))
+    .map((line) => line.replace(/--.*$/, ''))
     .join('\n');
   const statements = schema
     .split(';')
