@@ -1,6 +1,7 @@
 services:
   soccercamp-app:
-    build: .
+    image: ghcr.io/andycqos74/soccercamp-app:latest
+    pull_policy: always
     container_name: soccercamp-app
     restart: unless-stopped
     env_file:
