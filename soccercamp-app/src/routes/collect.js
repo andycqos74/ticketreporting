@@ -3,7 +3,7 @@ const { pool } = require('../db/pool');
 
 const router = express.Router();
 
-const SHIRT_SIZES = ['3-4', '5-6', '7-8', '9-10', '11-12', '13-14', 'S (Adult)', 'M (Adult)'];
+const SHIRT_SIZES = ['5XS', '4XS', '3XS', 'XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL'];
 
 async function findTicket(id) {
   if (!id) return null;
@@ -85,6 +85,39 @@ router.post('/mark', async (req, res, next) => {
     res.render('collect', {
       id, ticket: updated, shirtSizes: SHIRT_SIZES, notFound: false,
       message: `Shirt (${shirtSize}) marked collected for ${updated.PrintName}.`,
+      error: null,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Undoes a mistaken collection (shirt issued against the wrong ticket) so it
+// can be corrected against the right one. Clears Collected/size/date/by but
+// leaves the ticket record itself in place.
+router.post('/uncollect', async (req, res, next) => {
+  try {
+    const { id } = req.body;
+    const ticket = await findTicket(id);
+
+    if (!ticket) {
+      return res.render('collect', {
+        id, ticket: null, shirtSizes: SHIRT_SIZES, notFound: true, message: null,
+        error: 'Ticket not found.',
+      });
+    }
+
+    await pool.execute(
+      `UPDATE soccercamp_tickets
+       SET Collected = 0, CollectedDate = NULL, ShirtSize = NULL, CollectedBy = NULL
+       WHERE TicketID = ?`,
+      [ticket.TicketID]
+    );
+
+    const updated = await findTicket(id);
+    res.render('collect', {
+      id, ticket: updated, shirtSizes: SHIRT_SIZES, notFound: false,
+      message: `Collection removed for ${updated.PrintName} - it can now be collected again.`,
       error: null,
     });
   } catch (err) {
