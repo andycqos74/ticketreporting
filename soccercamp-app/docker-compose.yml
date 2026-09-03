@@ -4,8 +4,16 @@ services:
     pull_policy: always
     container_name: soccercamp-app
     restart: unless-stopped
-    env_file:
-      - .env
+    environment:
+      PORT: 3000
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME:-qosfctickets}
+      TICKETCO_API_TOKEN: ${TICKETCO_API_TOKEN}
+      SEASON_PASS_ID: ${SEASON_PASS_ID:-1127619}
+      TICKET_TYPE_FILTER: ${TICKET_TYPE_FILTER:-Soccer Camps 2026}
     ports:
       - "3010:3000"
     networks:

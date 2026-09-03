@@ -81,10 +81,10 @@ the app on host port **3010** (mapped to the container's internal port 3000).
    - `SEASON_PASS_ID=1127619`, `TICKET_TYPE_FILTER=Soccer Camps 2026`
      (only needed if you want to override the defaults)
 
-   (Portainer injects these directly, so no `.env` file is needed on the
-   host when deploying this way — `env_file: .env` in the compose file is
-   only read if the file exists next to it; Portainer's own stack
-   environment variables are passed through to the container regardless.)
+   The compose file references these as `${DB_HOST}` etc., which Portainer
+   substitutes from the stack's environment variables at deploy time — no
+   `.env` file needs to exist in the stack folder (a literal `env_file: .env`
+   directive would require one, which is why that approach was dropped).
 
 3. **Deploy the stack.** Portainer pulls `ghcr.io/andycqos74/soccercamp-app:latest`
    (see "Image build" above if this is the first deploy and the package is
