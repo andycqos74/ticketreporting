@@ -1,0 +1,22 @@
+services:
+  soccercamp-app:
+    build: .
+    container_name: soccercamp-app
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "3000:3000"
+    networks:
+      - shared_net
+
+networks:
+  shared_net:
+    # This must be the Docker network your existing MySQL container is
+    # already on, so this app can reach it by container/service name (DB_HOST
+    # in .env). Find it with:
+    #   docker inspect <mysql_container_name> --format '{{json .NetworkSettings.Networks}}'
+    # then replace "shared_net" below with the real network name (or rename
+    # this entry's value to match), and set external: true.
+    external: true
+    name: shared_net

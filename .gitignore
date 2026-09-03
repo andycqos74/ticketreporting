@@ -37,3 +37,7 @@ appsettings.local.config
 # ---- OS noise ----
 Thumbs.db
 .DS_Store
+
+# ---- soccercamp-app (Node/Docker) ----
+soccercamp-app/node_modules/
+soccercamp-app/.env

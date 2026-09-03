@@ -1,0 +1,76 @@
+<%- include('partials/head', { title: 'Collect a Shirt' }) %>
+
+<h2>Collect a Shirt</h2>
+
+<form method="get" action="/collect" class="form-inline mb-2" id="lookupForm">
+  <label class="mr-2" for="id">Ticket ID or reference:</label>
+  <input id="id" name="id" class="form-control mr-2" style="min-width: 260px" value="<%= id %>" autofocus>
+  <button type="submit" class="btn btn-secondary mr-2">Find</button>
+  <button type="button" id="scanBtn" class="btn btn-outline-secondary">Scan QR code</button>
+</form>
+
+<div id="qrReaderWrap" style="display:none; max-width: 400px;" class="mb-3">
+  <div id="qrReader"></div>
+  <button type="button" id="scanStopBtn" class="btn btn-sm btn-outline-danger mt-2">Cancel scan</button>
+</div>
+
+<% if (notFound) { %>
+  <div class="alert alert-warning">No ticket found for "<%= id %>".</div>
+<% } %>
+<% if (error) { %>
+  <div class="alert alert-danger"><%= error %></div>
+<% } %>
+<% if (message) { %>
+  <div class="alert alert-success"><%= message %></div>
+<% } %>
+
+<% if (ticket) { %>
+  <div class="card">
+    <div class="card-body">
+      <h4 class="card-title"><%= ticket.PrintName %></h4>
+      <p class="card-text">
+        <strong>Ticket type:</strong> <%= ticket.TicketType %><br>
+        <strong>Event:</strong> <%= ticket.EventName %><br>
+        <strong>Reference:</strong> <%= ticket.TicketCoRef %><br>
+        <strong>Collected:</strong>
+        <span class="badge <%= ticket.Collected ? 'badge-success' : 'badge-danger' %>">
+          <%= ticket.Collected ? 'Yes' : 'No' %>
+        </span>
+        <% if (ticket.Collected) { %>
+          &mdash; <%= new Date(ticket.CollectedDate).toLocaleString('en-GB') %>,
+          size <strong><%= ticket.ShirtSize %></strong>
+          <% if (ticket.CollectedBy) { %> (by <%= ticket.CollectedBy %>)<% } %>
+        <% } %>
+      </p>
+
+      <form method="post" action="/collect/mark" class="form-inline">
+        <input type="hidden" name="id" value="<%= ticket.TicketID %>">
+
+        <label class="mr-2" for="shirtSize">Shirt size:</label>
+        <select id="shirtSize" name="shirtSize" class="form-control mr-3" required>
+          <option value="">Choose...</option>
+          <% shirtSizes.forEach(function(size) { %>
+            <option value="<%= size %>" <%= ticket.ShirtSize === size ? 'selected' : '' %>><%= size %></option>
+          <% }); %>
+        </select>
+
+        <label class="mr-2" for="collectedBy">Issued by:</label>
+        <input id="collectedBy" name="collectedBy" class="form-control mr-3" placeholder="optional">
+
+        <% if (ticket.Collected) { %>
+          <div class="form-check mr-3">
+            <input class="form-check-input" type="checkbox" name="override" value="1" id="override">
+            <label class="form-check-label" for="override">Override (already collected)</label>
+          </div>
+        <% } %>
+
+        <button type="submit" class="btn btn-primary">Mark Collected</button>
+      </form>
+    </div>
+  </div>
+<% } %>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<script src="/js/collect.js"></script>
+
+<%- include('partials/foot') %>

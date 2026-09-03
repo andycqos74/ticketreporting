@@ -1,0 +1,8 @@
+body {
+  background-color: #f7f7f7;
+}
+.badge-success { background-color: #28a745; color: #fff; }
+.badge-danger { background-color: #dc3545; color: #fff; }
+#qrReader {
+  width: 100%;
+}

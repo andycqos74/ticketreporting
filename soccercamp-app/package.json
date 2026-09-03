@@ -1,0 +1,16 @@
+{
+  "name": "soccercamp-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Soccer Camps 2026 free-shirt collection tracker (TicketCo season pass sync)",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "ejs": "^3.1.10",
+    "mysql2": "^3.11.3",
+    "dotenv": "^16.4.5"
+  }
+}
