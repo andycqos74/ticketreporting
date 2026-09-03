@@ -7,6 +7,26 @@ body {
   width: 100%;
 }
 
+/* Tap-to-reveal email on the mobile ticket list (desktop shows it as its
+   own column instead - see .col-secondary below). */
+.email-reveal summary {
+  display: inline-block;
+  cursor: pointer;
+  list-style: none;
+  padding: 0.1rem 0.4rem;
+  font-size: 1rem;
+  color: #007bff;
+}
+.email-reveal summary::-webkit-details-marker {
+  display: none;
+}
+.email-reveal .email-text {
+  display: block;
+  font-size: 0.85rem;
+  color: #555;
+  word-break: break-all;
+}
+
 /* ---------------------------------------------------------------------
    Responsive forms: inline on desktop (unchanged from before), stacked
    with full-width, easier-to-tap controls on tablet/phone widths.

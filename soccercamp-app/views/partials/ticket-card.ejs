@@ -6,6 +6,9 @@
       <strong>Ticket type:</strong> <%= ticket.TicketType %><br>
       <strong>Event:</strong> <%= ticket.EventName %><br>
       <strong>Reference:</strong> <%= ticket.TicketCoRef %><br>
+      <% if (ticket.Email) { %>
+        <strong>Email:</strong> <%= ticket.Email %><br>
+      <% } %>
       <strong>Collected:</strong>
       <span class="badge <%= ticket.Collected ? 'badge-success' : 'badge-danger' %>">
         <%= ticket.Collected ? 'Yes' : 'No' %>

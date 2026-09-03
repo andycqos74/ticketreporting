@@ -22,6 +22,7 @@
     <thead>
       <tr>
         <th>Name</th>
+        <th class="col-secondary">Email</th>
         <th class="col-secondary">Ref</th>
         <th class="col-secondary">Ticket Type</th>
         <th class="col-secondary">Issued</th>
@@ -34,7 +35,16 @@
     <tbody>
       <% rows.forEach(function(row) { %>
         <tr>
-          <td><%= row.PrintName %></td>
+          <td>
+            <%= row.PrintName %>
+            <% if (row.Email) { %>
+              <details class="email-reveal d-md-none">
+                <summary title="Show email">&#9993;</summary>
+                <span class="email-text"><%= row.Email %></span>
+              </details>
+            <% } %>
+          </td>
+          <td class="col-secondary"><%= row.Email || '' %></td>
           <td class="col-secondary"><%= row.TicketCoRef %></td>
           <td class="col-secondary"><%= row.TicketType %></td>
           <td class="col-secondary"><%= row.PurchaseDate ? new Date(row.PurchaseDate).toLocaleDateString('en-GB') : '' %></td>

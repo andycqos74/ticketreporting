@@ -9,7 +9,7 @@ router.get('/', async (req, res, next) => {
     const search = (req.query.search || '').trim();
 
     let sql = `
-      SELECT TicketID, TicketCoRef, TicketType, PurchaseDate,
+      SELECT TicketID, TicketCoRef, TicketType, PurchaseDate, Email,
              TRIM(CONCAT(HolderFirstName, ' ', HolderLastName)) AS PrintName,
              Collected, ShirtSize, CollectedDate
       FROM soccercamp_tickets
