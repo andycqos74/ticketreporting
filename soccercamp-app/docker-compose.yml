@@ -6,17 +6,13 @@ services:
     env_file:
       - .env
     ports:
-      - "3000:3000"
+      - "3010:3000"
     networks:
       - shared_net
 
 networks:
   shared_net:
-    # This must be the Docker network the mysql-tickets container is already
-    # on, so this app can reach it by container name (DB_HOST=mysql-tickets
-    # in .env). Find/create it in Portainer under Networks, or with:
-    #   docker inspect mysql-tickets --format '{{json .NetworkSettings.Networks}}'
-    # Replace "shared_net" below with the real network name, keep
-    # external: true (this stack must not create/own the network).
+    # The Docker network the mysql-tickets container is already on, so this
+    # app can reach it by container name (DB_HOST=mysql-tickets in .env).
     external: true
-    name: shared_net
+    name: root_default

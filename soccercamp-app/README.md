@@ -32,32 +32,20 @@ testing).
 
 ## Deploying (Portainer)
 
-The MySQL container is `mysql-tickets`. This app must join whatever Docker
-network `mysql-tickets` is already on, so it can reach it by container name.
+The MySQL container is `mysql-tickets`, on the `root_default` Docker network
+— `docker-compose.yml` is already set to join that network and to publish
+the app on host port **3010** (mapped to the container's internal port 3000).
 
-1. **Find (or create) the shared network.**
-   In Portainer: **Networks** -> look for the network `mysql-tickets` is
-   attached to (click into it, or check **Containers** -> `mysql-tickets` ->
-   its "Network" column/details). Note the exact name — it's often something
-   like `<stackname>_default`, not plain `bridge`.
-
-   - If `mysql-tickets` is only on the default `bridge` network (no DNS
-     resolution by name there), create a new network instead: **Networks**
-     -> **Add network** -> driver `bridge` -> name it e.g. `ticketing_net`.
-     Then attach the existing container to it: **Containers** ->
-     `mysql-tickets` -> **Join network** -> pick `ticketing_net`. (This adds
-     a network to the running container without recreating it.)
-
-2. **Create the stack.**
+1. **Create the stack.**
    Portainer -> **Stacks** -> **Add stack**.
    - *Name*: `soccercamp-app`.
    - *Build method*: either "Repository" (point at this git repo/branch,
      with **Compose path** `soccercamp-app/docker-compose.yml`), or "Web
      editor" and paste the contents of `docker-compose.yml`.
-   - Edit the pasted/deployed compose so `networks.shared_net.name` matches
-     the real network name from step 1 (e.g. `ticketing_net`).
+   - If `mysql-tickets` is ever moved to a different network, update
+     `networks.shared_net.name` in the compose file to match.
 
-3. **Set environment variables.**
+2. **Set environment variables.**
    In the stack's **Environment variables** section, add the values from
    `.env.example`:
    - `DB_HOST=mysql-tickets`
@@ -74,19 +62,18 @@ network `mysql-tickets` is already on, so it can reach it by container name.
    only read if the file exists next to it; Portainer's own stack
    environment variables are passed through to the container regardless.)
 
-4. **Deploy the stack.** Portainer builds the image from `Dockerfile` and
-   starts the container, joined to the shared network. The
-   `soccercamp_tickets` table is created automatically on first startup.
+3. **Deploy the stack.** Portainer builds the image from `Dockerfile` and
+   starts the container, joined to `root_default`. The `soccercamp_tickets`
+   table is created automatically on first startup.
 
-5. Browse to `http://<host>:3000/tickets`, or `/admin` to run the first
+4. Browse to `http://<host>:3010/tickets`, or `/admin` to run the first
    sync from TicketCo.
 
 ### Deploying from the CLI instead
 
 ```bash
 cd soccercamp-app
-cp .env.example .env   # fill in DB_HOST=mysql-tickets, credentials, API token
-# edit docker-compose.yml's networks.shared_net.name to match mysql-tickets's network
+cp .env.example .env   # fill in credentials and the API token
 docker compose up -d --build
 ```
 
