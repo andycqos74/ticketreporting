@@ -8,7 +8,7 @@ const SHIRT_SIZES = ['5XS', '4XS', '3XS', 'XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL
 async function findTicket(id) {
   if (!id) return null;
   const [rows] = await pool.query(
-    `SELECT TicketID, TicketCoRef, TicketType, EventName, PurchaseDate,
+    `SELECT TicketID, TicketCoRef, TicketType, EventName, PurchaseDate, Email,
             TRIM(CONCAT(HolderFirstName, ' ', HolderLastName)) AS PrintName,
             Collected, ShirtSize, CollectedDate, CollectedBy
      FROM soccercamp_tickets
@@ -19,6 +19,23 @@ async function findTicket(id) {
   return rows[0] || null;
 }
 
+// Other tickets bought under the same email address (any number of them -
+// families sometimes have more than two kids on the camp), so they can all
+// be marked collected from the one scan without hunting down each ticket.
+async function findLinkedTickets(ticket) {
+  if (!ticket || !ticket.Email) return [];
+  const [rows] = await pool.query(
+    `SELECT TicketID, TicketCoRef, TicketType, EventName, PurchaseDate, Email,
+            TRIM(CONCAT(HolderFirstName, ' ', HolderLastName)) AS PrintName,
+            Collected, ShirtSize, CollectedDate, CollectedBy
+     FROM soccercamp_tickets
+     WHERE Email = ? AND TicketID <> ?
+     ORDER BY HolderFirstName, HolderLastName`,
+    [ticket.Email, ticket.TicketID]
+  );
+  return rows;
+}
+
 router.get('/', async (req, res, next) => {
   try {
     const id = (req.query.id || '').trim();
@@ -26,6 +43,7 @@ router.get('/', async (req, res, next) => {
     res.render('collect', {
       id,
       ticket,
+      linkedTickets: await findLinkedTickets(ticket),
       shirtSizes: SHIRT_SIZES,
       notFound: id && !ticket,
       message: null,
@@ -42,7 +60,7 @@ router.get('/lookup', async (req, res, next) => {
     const id = (req.query.id || '').trim();
     const ticket = await findTicket(id);
     if (!ticket) return res.status(404).json({ found: false });
-    res.json({ found: true, ticket });
+    res.json({ found: true, ticket, linkedTickets: await findLinkedTickets(ticket) });
   } catch (err) {
     next(err);
   }
@@ -55,21 +73,21 @@ router.post('/mark', async (req, res, next) => {
 
     if (!ticket) {
       return res.render('collect', {
-        id, ticket: null, shirtSizes: SHIRT_SIZES, notFound: true, message: null,
+        id, ticket: null, linkedTickets: [], shirtSizes: SHIRT_SIZES, notFound: true, message: null,
         error: 'Ticket not found.',
       });
     }
 
     if (ticket.Collected && !override) {
       return res.render('collect', {
-        id, ticket, shirtSizes: SHIRT_SIZES, notFound: false, message: null,
+        id, ticket, linkedTickets: await findLinkedTickets(ticket), shirtSizes: SHIRT_SIZES, notFound: false, message: null,
         error: `Already collected on ${new Date(ticket.CollectedDate).toLocaleString('en-GB')} (size ${ticket.ShirtSize}). Tick "Override" to change it.`,
       });
     }
 
     if (!shirtSize) {
       return res.render('collect', {
-        id, ticket, shirtSizes: SHIRT_SIZES, notFound: false, message: null,
+        id, ticket, linkedTickets: await findLinkedTickets(ticket), shirtSizes: SHIRT_SIZES, notFound: false, message: null,
         error: 'Please choose a shirt size.',
       });
     }
@@ -83,7 +101,7 @@ router.post('/mark', async (req, res, next) => {
 
     const updated = await findTicket(id);
     res.render('collect', {
-      id, ticket: updated, shirtSizes: SHIRT_SIZES, notFound: false,
+      id, ticket: updated, linkedTickets: await findLinkedTickets(updated), shirtSizes: SHIRT_SIZES, notFound: false,
       message: `Shirt (${shirtSize}) marked collected for ${updated.PrintName}.`,
       error: null,
     });
@@ -102,7 +120,7 @@ router.post('/uncollect', async (req, res, next) => {
 
     if (!ticket) {
       return res.render('collect', {
-        id, ticket: null, shirtSizes: SHIRT_SIZES, notFound: true, message: null,
+        id, ticket: null, linkedTickets: [], shirtSizes: SHIRT_SIZES, notFound: true, message: null,
         error: 'Ticket not found.',
       });
     }
@@ -116,7 +134,7 @@ router.post('/uncollect', async (req, res, next) => {
 
     const updated = await findTicket(id);
     res.render('collect', {
-      id, ticket: updated, shirtSizes: SHIRT_SIZES, notFound: false,
+      id, ticket: updated, linkedTickets: await findLinkedTickets(updated), shirtSizes: SHIRT_SIZES, notFound: false,
       message: `Collection removed for ${updated.PrintName} - it can now be collected again.`,
       error: null,
     });

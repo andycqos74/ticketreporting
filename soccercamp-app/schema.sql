@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS soccercamp_tickets (
   HolderLastName   VARCHAR(255) NULL,
   BuyerFirstName   VARCHAR(255) NULL,
   BuyerLastName    VARCHAR(255) NULL,
+  Email            VARCHAR(255) NULL,                     -- buyer email; links multiple tickets from one order
   Collected        TINYINT(1)   NOT NULL DEFAULT 0,
   CollectedDate    DATETIME     NULL,
   CollectedBy      VARCHAR(100) NULL,                     -- optional: operator name typed on the collect page
@@ -27,5 +28,6 @@ CREATE TABLE IF NOT EXISTS soccercamp_tickets (
   CreatedAt        TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UpdatedAt        TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (TicketID),
-  UNIQUE KEY uq_ticketcoref (TicketCoRef)
+  UNIQUE KEY uq_ticketcoref (TicketCoRef),
+  KEY idx_email (Email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

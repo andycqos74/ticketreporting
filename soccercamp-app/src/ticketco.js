@@ -9,6 +9,23 @@ function str(item, key) {
   return v === null || v === undefined ? '' : String(v);
 }
 
+// The field TicketCo uses for the buyer's email isn't confirmed against a
+// live response yet, so try the plausible names in order and take the
+// first that's populated (buyer_email pairs with the existing
+// buyer_first_name/buyer_last_name fields, so it's the most likely one).
+function emailOf(item) {
+  return (
+    str(item, 'buyer_email') ||
+    str(item, 'email') ||
+    str(item, 'purchaser_email') ||
+    str(item, 'holder_email')
+  );
+}
+
+function nullIfEmpty(v) {
+  return v === '' ? null : v;
+}
+
 // TicketCo returns timestamps as ISO 8601 with a timezone offset (e.g.
 // "2026-07-16T14:01:42+00:00"), which MySQL's DATETIME rejects outright -
 // it wants "YYYY-MM-DD HH:MM:SS". Convert to that, in UTC.
@@ -32,8 +49,8 @@ async function fetchPage(token, page) {
 const UPSERT_SQL = `
   INSERT INTO soccercamp_tickets
     (TicketID, TicketCoRef, PurchaseDate, TicketType, EventName,
-     HolderFirstName, HolderLastName, BuyerFirstName, BuyerLastName)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+     HolderFirstName, HolderLastName, BuyerFirstName, BuyerLastName, Email)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   ON DUPLICATE KEY UPDATE
     TicketCoRef = VALUES(TicketCoRef),
     PurchaseDate = VALUES(PurchaseDate),
@@ -42,7 +59,8 @@ const UPSERT_SQL = `
     HolderFirstName = VALUES(HolderFirstName),
     HolderLastName = VALUES(HolderLastName),
     BuyerFirstName = VALUES(BuyerFirstName),
-    BuyerLastName = VALUES(BuyerLastName)
+    BuyerLastName = VALUES(BuyerLastName),
+    Email = VALUES(Email)
 `;
 
 // Pulls every page of item_grosses for the soccer camps season pass, keeps
@@ -78,6 +96,7 @@ async function syncSoccerCampTickets() {
         str(item, 'holder_last_name'),
         str(item, 'buyer_first_name'),
         str(item, 'buyer_last_name'),
+        nullIfEmpty(emailOf(item).trim().toLowerCase()),
       ]);
       matched += 1;
     }
