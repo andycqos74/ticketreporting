@@ -6,3 +6,74 @@ body {
 #qrReader {
   width: 100%;
 }
+
+/* ---------------------------------------------------------------------
+   Responsive forms: inline on desktop (unchanged from before), stacked
+   with full-width, easier-to-tap controls on tablet/phone widths.
+   768px covers a 7" tablet in portrait as well as phones; landscape
+   tablets and desktop stay on the original inline layout.
+   --------------------------------------------------------------------- */
+.responsive-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+.responsive-form > * {
+  margin: 0;
+}
+
+@media (max-width: 767.98px) {
+  .navbar .navbar-nav {
+    flex-wrap: wrap;
+  }
+
+  .container {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .responsive-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .responsive-form label {
+    margin-bottom: 0.15rem;
+  }
+  .responsive-form select,
+  .responsive-form input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+  .responsive-form button {
+    width: 100%;
+  }
+  .responsive-form .form-check {
+    width: 100%;
+  }
+
+  /* Bigger tap targets on touch-sized screens. */
+  .btn {
+    min-height: 44px;
+    padding-top: 0.55rem;
+    padding-bottom: 0.55rem;
+  }
+  .btn-sm {
+    min-height: 38px;
+  }
+  .form-control {
+    min-height: 44px;
+  }
+
+  #qrReaderWrap {
+    max-width: 100% !important;
+  }
+
+  .btn-block-mobile {
+    display: block;
+    width: 100%;
+  }
+
+  /* Trim the ticket table to what matters most on a small screen; the
+     rest is still one tap away via the "Open" detail page. */
+  table.table-trim-mobile .col-secondary {
+    display: none;
+  }
+}
