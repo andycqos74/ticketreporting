@@ -9,8 +9,14 @@ function str(item, key) {
   return v === null || v === undefined ? '' : String(v);
 }
 
-function nullIfEmpty(v) {
-  return v === '' ? null : v;
+// TicketCo returns timestamps as ISO 8601 with a timezone offset (e.g.
+// "2026-07-16T14:01:42+00:00"), which MySQL's DATETIME rejects outright -
+// it wants "YYYY-MM-DD HH:MM:SS". Convert to that, in UTC.
+function toMysqlDatetime(v) {
+  if (!v) return null;
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString().slice(0, 19).replace('T', ' ');
 }
 
 async function fetchPage(token, page) {
@@ -65,7 +71,7 @@ async function syncSoccerCampTickets() {
       await pool.execute(UPSERT_SQL, [
         uuid,
         str(item, 'ref_number'),
-        nullIfEmpty(str(item, 'transaction_datestamp')),
+        toMysqlDatetime(str(item, 'transaction_datestamp')),
         str(item, 'item_type_title'),
         str(item, 'event_name'),
         str(item, 'holder_first_name'),
