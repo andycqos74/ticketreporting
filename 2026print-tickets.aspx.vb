@@ -14,7 +14,15 @@ Public Class print2026tickets
     ' TicketCo API settings
     ' ---------------------------------------------------------------
     Private Const FixtureId As String = "1127619"
-    Private Const ApiToken As String = "nk6t4EzmDNuB3vAZ1gMy"
+    Private Shared ReadOnly Property ApiToken As String
+        Get
+            Dim token As String = ConfigurationManager.AppSettings("TicketcoApiToken")
+            If String.IsNullOrEmpty(token) Then
+                Throw New ConfigurationErrorsException("Missing appSettings key 'TicketcoApiToken'.")
+            End If
+            Return token
+        End Get
+    End Property
     Private Const BaseUrl As String = "https://ticketco.events/api/public/v1/item_grosses"
 
     ' ViewState key to persist the DataTable across postbacks
