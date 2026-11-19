@@ -37,3 +37,9 @@ appsettings.local.config
 # ---- OS noise ----
 Thumbs.db
 .DS_Store
+
+# Stale build copy of app config - web apps read Web.config, and this one held live credentials
+bin/*.dll.config
+
+# Claude Code (machine-local settings)
+.claude/settings.local.json

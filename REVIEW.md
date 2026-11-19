@@ -84,8 +84,8 @@ does **not** undo the exposure — they must be rotated.
 
 | # | What | Where | Action |
 |---|------|-------|--------|
-| 1 | MySQL user/password (`qosfclivedb` / `P@ssword1919`) | `Web.config` connection strings; hardcoded in `import_JSON.php` | **Rotate the DB password.** Then keep it out of source (e.g. `configSource`/`appSettings file=` pointing at an un-committed file). |
-| 2 | TicketCo API token (`nk6t4EzmDNuB3vAZ1gMy`) | `import_JSON.php`, `JSONtest.aspx.vb`, now `Web.config` | **Rotate the token with TicketCo.** It is now read from one config key, but the old value is in history. |
+| 1 | MySQL user/password (`qosfclivedb` / `(removed - rotate it)`) | `Web.config` connection strings; hardcoded in `import_JSON.php` | **Rotate the DB password.** Then keep it out of source (e.g. `configSource`/`appSettings file=` pointing at an un-committed file). |
+| 2 | TicketCo API token (`(removed - rotate it)`) | `import_JSON.php`, `JSONtest.aspx.vb`, now `Web.config` | **Rotate the token with TicketCo.** It is now read from one config key, but the old value is in history. |
 | 3 | Cleartext app login passwords (Andy/Dan/Eric/…) | `Web.config` `<credentials passwordFormat="Clear">` | Change these passwords; consider hashing or a proper user store. |
 | 4 | SQL injection | `import_JSON.php` builds SQL by string interpolation | The VB replacement (`TicketcoImporter`) is fully parameterised. Retire the PHP importer once you cut over. |
 | 5 | `Process.Start(webAddress)` on the server | `JSONtest.aspx.vb` | Launches a browser process on the web server on every page load — remove; the file is a dead test now. |
