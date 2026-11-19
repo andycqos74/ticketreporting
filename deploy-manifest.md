@@ -15,6 +15,7 @@ way that looked like a config problem rather than a stale-binary one.
 | `bin\` (all `*.dll`) | Rebuilt `admintickets.dll` + MySql.Data, Newtonsoft.Json, SignalR, Owin, Microsoft.Web.Infrastructure. |
 | `bin\roslyn\` | **Required** — `Web.config` `<system.codedom>` uses it to compile `.aspx` at runtime. |
 | `dash_display.aspx`, `dash_control.aspx`, `2026print-tickets.aspx` | The three pages. |
+| `UC_footer.ascx`, `UC_header.ascx` | Shared markup for the user controls (their `.vb` code-behind is in the DLL, but the `.ascx` markup itself deploys separately, same as `.aspx`). |
 | `Global.asax` | Markup (its `.vb` is in the DLL). |
 | `Web.config` | No secrets in it — points at `secrets.config` / `connectionStrings.config` (see below). |
 | `Scripts\` | jquery, jquery-ui, signalR client. |
@@ -48,7 +49,7 @@ after every recycle.
 ## Example publish + copy
 
 ```cmd
-robocopy . \\SERVER\wwwroot\admintickets dash_display.aspx dash_control.aspx 2026print-tickets.aspx Global.asax Web.config
+robocopy . \\SERVER\wwwroot\admintickets dash_display.aspx dash_control.aspx 2026print-tickets.aspx UC_footer.ascx UC_header.ascx Global.asax Web.config
 robocopy bin \\SERVER\wwwroot\admintickets\bin /MIR /XF *.pdb *.xml
 robocopy Scripts \\SERVER\wwwroot\admintickets\Scripts /MIR
 robocopy css \\SERVER\wwwroot\admintickets\css jquery-ui.min.css all.min.css bs4_custom.css

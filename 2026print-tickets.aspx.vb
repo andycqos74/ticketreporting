@@ -107,9 +107,12 @@ Public Class print2026tickets
         Dim constr As String = ConfigurationManager.ConnectionStrings("QosTickets").ConnectionString
         Using con As New MySqlConnection(constr)
             Using cmd As New MySqlCommand(
-                "SELECT PurchaseDate, TicketID, TicketCoRef, GroundArea, SeatRow, SeatNumber, " &
-                "TicketType, BuyerFirstName, BuyerLastName, PrintName, EventName, Questions, GroupOrderID " &
-                "FROM ticketco_seasontickets_2627 ORDER BY PurchaseDate DESC", con)
+                "SELECT s.PurchaseDate, s.TicketID, s.TicketCoRef, s.GroundArea, s.SeatRow, s.SeatNumber, " &
+                "s.TicketType, s.BuyerFirstName, s.BuyerLastName, s.PrintName, s.EventName, s.Questions, s.GroupOrderID, " &
+                "COALESCE(p.Printed, 0) AS Printed " &
+                "FROM ticketco_seasontickets_2627 s " &
+                "LEFT JOIN ticket_print_status p ON p.TicketCoRef = s.TicketCoRef " &
+                "ORDER BY s.PurchaseDate DESC", con)
                 Using sda As New MySqlDataAdapter(cmd)
                     sda.Fill(dt)
                 End Using
@@ -126,18 +129,20 @@ Public Class print2026tickets
         Dim dt As New DataTable()
         Using con As New MySqlConnection(constr)
             Using cmd As New MySqlCommand(
-                "SELECT GroupOrderID, BuyerFirstName, BuyerLastName, " &
-                "MIN(PurchaseDate) AS PurchaseDate, COUNT(*) AS TicketCount, " &
-                "CASE MIN(OrderSettlement) " &
+                "SELECT c.GroupOrderID, c.BuyerFirstName, c.BuyerLastName, " &
+                "MIN(c.PurchaseDate) AS PurchaseDate, COUNT(*) AS TicketCount, " &
+                "SUM(CASE WHEN COALESCE(p.Printed, 0) = 1 THEN 1 ELSE 0 END) AS PrintedCount, " &
+                "CASE MIN(c.OrderSettlement) " &
                 "  WHEN 'cash'   THEN 'Admin' " &
                 "  WHEN 'mobile' THEN 'Online' " &
                 "  WHEN 'online' THEN 'Online' " &
-                "  ELSE MIN(OrderSettlement) " &
+                "  ELSE MIN(c.OrderSettlement) " &
                 "END AS OrderSettlement " &
-                "FROM ticketco_cardprint_2627 " &
-                "WHERE GroupOrderID IS NOT NULL AND GroupOrderID <> '' " &
-                "GROUP BY GroupOrderID, BuyerFirstName, BuyerLastName " &
-                "ORDER BY MIN(PurchaseDate) DESC", con)
+                "FROM ticketco_cardprint_2627 c " &
+                "LEFT JOIN ticket_print_status p ON p.TicketCoRef = c.TicketCoRef " &
+                "WHERE c.GroupOrderID IS NOT NULL AND c.GroupOrderID <> '' " &
+                "GROUP BY c.GroupOrderID, c.BuyerFirstName, c.BuyerLastName " &
+                "ORDER BY MIN(c.PurchaseDate) DESC", con)
                 Using sda As New MySqlDataAdapter(cmd)
                     sda.Fill(dt)
                 End Using
@@ -145,8 +150,17 @@ Public Class print2026tickets
         End Using
         gvOrders.DataSource = dt
         gvOrders.DataBind()
-        If gvOrders.Rows.Count > 0 Then
-            gvOrders.HeaderRow.TableSection = TableRowSection.TableHeader
+        SetHeaderRow(gvOrders)
+    End Sub
+
+    ' ---------------------------------------------------------------
+    ' SetHeaderRow - render the header in <thead> (needed by DataTables).
+    ' Checks HeaderRow rather than Rows.Count so it also works when the
+    ' grid is empty (ShowHeaderWhenEmpty="true").
+    ' ---------------------------------------------------------------
+    Private Shared Sub SetHeaderRow(ByVal grid As GridView)
+        If grid.HeaderRow IsNot Nothing Then
+            grid.HeaderRow.TableSection = TableRowSection.TableHeader
         End If
     End Sub
 
@@ -156,9 +170,7 @@ Public Class print2026tickets
     Private Sub BindGrid(ByVal dt As DataTable)
         GridView1.DataSource = dt
         GridView1.DataBind()
-        If GridView1.Rows.Count > 0 Then
-            GridView1.HeaderRow.TableSection = TableRowSection.TableHeader
-        End If
+        SetHeaderRow(GridView1)
     End Sub
 
     ' ---------------------------------------------------------------
@@ -212,6 +224,57 @@ Public Class print2026tickets
         dv.Sort = e.SortExpression
         BindGrid(dv.ToTable())
     End Sub
+
+    ' ---------------------------------------------------------------
+    ' Printed ticks - called via jQuery AJAX from the "Printed" columns.
+    ' Status lives in ticket_print_status (TicketCoRef unique key), so it
+    ' survives the n8n refresh that rewrites the ticket tables.
+    ' ---------------------------------------------------------------
+    Private Shared Function PrintStatusConnStr() As String
+        Return ConfigurationManager.ConnectionStrings("QosTickets").ConnectionString
+    End Function
+
+    <System.Web.Services.WebMethod()>
+    Public Shared Function SetTicketPrinted(ByVal ticketCoRef As String, ByVal printed As Boolean) As String
+        If String.IsNullOrEmpty(ticketCoRef) Then Return "error: missing ticket reference"
+
+        Using con As New MySqlConnection(PrintStatusConnStr())
+            con.Open()
+            Using cmd As New MySqlCommand(
+                "INSERT INTO ticket_print_status (TicketCoRef, Printed, PrintedAt) " &
+                "VALUES (@ref, @printed, CASE WHEN @printed = 1 THEN NOW() ELSE NULL END) " &
+                "ON DUPLICATE KEY UPDATE Printed = VALUES(Printed), PrintedAt = VALUES(PrintedAt)", con)
+                cmd.Parameters.AddWithValue("@ref", ticketCoRef)
+                cmd.Parameters.AddWithValue("@printed", If(printed, 1, 0))
+                cmd.ExecuteNonQuery()
+            End Using
+        End Using
+        Return "ok"
+    End Function
+
+    ' Marks every ticket in an order (season + card-print tables) at once.
+    <System.Web.Services.WebMethod()>
+    Public Shared Function SetOrderPrinted(ByVal groupOrderID As String, ByVal printed As Boolean) As String
+        If String.IsNullOrEmpty(groupOrderID) Then Return "error: missing order id"
+
+        Using con As New MySqlConnection(PrintStatusConnStr())
+            con.Open()
+            Using cmd As New MySqlCommand(
+                "INSERT INTO ticket_print_status (TicketCoRef, Printed, PrintedAt) " &
+                "SELECT t.TicketCoRef, @printed, CASE WHEN @printed = 1 THEN NOW() ELSE NULL END " &
+                "FROM ( " &
+                "  SELECT TicketCoRef FROM ticketco_seasontickets_2627 WHERE GroupOrderID = @oid " &
+                "  UNION " &
+                "  SELECT TicketCoRef FROM ticketco_cardprint_2627     WHERE GroupOrderID = @oid " &
+                ") t " &
+                "ON DUPLICATE KEY UPDATE Printed = VALUES(Printed), PrintedAt = VALUES(PrintedAt)", con)
+                cmd.Parameters.AddWithValue("@oid", groupOrderID)
+                cmd.Parameters.AddWithValue("@printed", If(printed, 1, 0))
+                cmd.ExecuteNonQuery()
+            End Using
+        End Using
+        Return "ok"
+    End Function
 
     ' ---------------------------------------------------------------
     ' TriggerN8nRefresh - called via jQuery AJAX (no postback).

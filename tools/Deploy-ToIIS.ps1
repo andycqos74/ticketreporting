@@ -232,17 +232,31 @@ function Build-Dll {
             "2026print-tickets.aspx.designer.vb", "2026print-tickets.aspx.vb"
         )
         $references = @(
-            "System.dll", "System.Core.dll", "System.Data.dll", "System.Configuration.dll", "System.Web.dll",
+            "System.dll", "System.Core.dll", "System.Data.dll", "System.Xml.dll", "System.Configuration.dll", "System.Web.dll",
             "MySql.Data.dll", "Newtonsoft.Json.dll", "Microsoft.AspNet.SignalR.Core.dll",
             "Microsoft.AspNet.SignalR.SystemWeb.dll", "Microsoft.Owin.dll",
             "Microsoft.Owin.Host.SystemWeb.dll", "Owin.dll", "Microsoft.Web.Infrastructure.dll"
         ) | ForEach-Object { "/r:$_" }
+
+        # System.Web.Extensions (ScriptManager) and System.Web.Services (WebMethod) live only in
+        # the GAC on most Windows Server installs -- not as loose files in Framework64\v4.0.30319,
+        # so a bare filename + /libpath lookup silently fails ("Type ... is not defined") even
+        # though the reference name itself is correct. MSBuild resolves these transparently;
+        # a raw vbc.exe call doesn't, so resolve their real GAC path here instead of guessing one.
+        $gacReferences = @("System.Web.Extensions", "System.Web.Services") | ForEach-Object {
+            $asm = [System.Reflection.Assembly]::LoadWithPartialName($_)
+            if (-not $asm -or -not $asm.Location) {
+                throw "Could not resolve '$_' from the GAC -- is .NET Framework 4.8 installed on this server?"
+            }
+            "/r:$($asm.Location)"
+        }
 
         & $vbc /noconfig /target:library /out:bin\admintickets.dll `
             /rootnamespace:admintickets '/define:_MYTYPE="Web"' /optioninfer+ /langversion:14 `
             /imports:Microsoft.VisualBasic,System,System.Collections,System.Collections.Generic,System.Data,System.Diagnostics,System.Linq,System.Web,System.Web.UI,System.Web.UI.HtmlControls,System.Web.UI.WebControls `
             "/libpath:${fxDir};bin" `
             @references `
+            @gacReferences `
             @sourceFiles
 
         if ($LASTEXITCODE -ne 0) { throw "vbc.exe build failed (exit $LASTEXITCODE) -- see compiler output above." }
@@ -256,7 +270,7 @@ function Sync-DeployFiles {
     Write-Host "Syncing deploy set into $SitePath..." -ForegroundColor Cyan
     New-Item -ItemType Directory -Path $SitePath -Force | Out-Null
 
-    robocopy $SourcePath $SitePath dash_display.aspx dash_control.aspx 2026print-tickets.aspx Global.asax Web.config /NFL /NDL /NJH | Out-Null
+    robocopy $SourcePath $SitePath dash_display.aspx dash_control.aspx 2026print-tickets.aspx UC_footer.ascx UC_header.ascx Global.asax Web.config /NFL /NDL /NJH | Out-Null
     if ($LASTEXITCODE -ge 8) { throw "robocopy failed copying top-level files (exit $LASTEXITCODE)" }
 
     robocopy (Join-Path $SourcePath "bin") (Join-Path $SitePath "bin") /MIR /XF *.pdb *.xml /NFL /NDL /NJH | Out-Null
