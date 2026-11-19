@@ -155,6 +155,33 @@ table.dataTable thead th {
     background-color: #094582 !important;
     color: #ffffff !important;
 }
+
+/* bs4_custom.css hides every native checkbox off-screen (position:absolute;
+   left:-10000px) because the rest of the app styles a sibling <label> instead.
+   The printed ticks are real checkboxes, so opt them back in. The selector is
+   type + attribute + class, so it outranks that rule whatever the file order. */
+input[type="checkbox"].tk-printed,
+input[type="checkbox"].tk-printed-order {
+    position: static !important;
+    left: auto !important;
+    top: auto !important;
+    width: 1.1rem !important;
+    height: 1.1rem !important;
+    overflow: visible !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: inline-block !important;
+    clip: auto !important;
+    clip-path: none !important;
+    cursor: pointer;
+    vertical-align: middle;
+}
+
+/* keep the tick centred in its column */
+#GridView1 td:nth-child(12),
+#gvOrders td:nth-child(7) {
+    text-align: center;
+}
    </style>
 </head>
 <body class="body-terrace">
@@ -232,8 +259,9 @@ table.dataTable thead th {
            <div class="tab-content">
                <div class="tab-pane fade show active" id="pane-season" role="tabpanel">
         <asp:GridView ID="GridView1" runat="server" AutoGenerateColumns="false"
-            DataKeyNames="TicketCoRef" CssClass="table table-hover table-bordered " Visible="true" 
-            OnRowEditing="OnRowEditing" OnRowCancelingEdit="OnRowCancelingEdit" AllowPaging="false" 
+            DataKeyNames="TicketCoRef" CssClass="table table-hover table-bordered " Visible="true"
+            OnRowEditing="OnRowEditing" OnRowCancelingEdit="OnRowCancelingEdit" AllowPaging="false"
+            ShowHeaderWhenEmpty="true"
             OnRowUpdating="OnRowUpdating" OnRowDataBound="gvDays_RowDataBound" >
 
             
@@ -373,10 +401,23 @@ table.dataTable thead th {
                     </ItemTemplate>
                 </asp:TemplateField>
 
+                <%-- Printed tick. Placed after Order ID on purpose: GetSelectedRow()
+                     reads the grid by hard-coded cell index (1,4,5,6,7,8,9), so a
+                     column inserted before those would break printing. --%>
+                <asp:TemplateField HeaderText="Printed" SortExpression="Printed">
+                    <ItemTemplate>
+                        <input type="checkbox" class="tk-printed"
+                               onclick="onTicketPrintedToggle(this); event.stopPropagation();"
+                               data-ref='<%# Eval("TicketCoRef") %>'
+                               data-order='<%# Eval("GroupOrderID") %>'
+                               <%# If(Convert.ToInt32(Eval("Printed")) = 1, "checked=""checked""", "") %> />
+                    </ItemTemplate>
+                </asp:TemplateField>
+
                     <asp:TemplateField HeaderText="" >
                     <ItemTemplate>
                         <asp:Button ID="Button1" runat="server" Text="PRINT" OnClientClick="GetSelectedRow(this); return false;" Enabled="true" />
-               
+
                     </ItemTemplate>
 <%--                    <EditItemTemplate>
                        <asp:DropDownList ID="DDStatus" runat="server" CssClass="form-control" SelectedValue='<%# Eval("TerraceStatusID") %>'>
@@ -399,7 +440,8 @@ table.dataTable thead th {
 
                <div class="tab-pane fade" id="pane-orders" role="tabpanel" style="cursor:pointer">
                    <asp:GridView ID="gvOrders" runat="server" AutoGenerateColumns="false"
-                       CssClass="table table-hover table-bordered" AllowSorting="false">
+                       CssClass="table table-hover table-bordered" AllowSorting="false"
+                       ShowHeaderWhenEmpty="true">
                        <Columns>
                            <asp:BoundField DataField="GroupOrderID" HeaderText="Order ID" />
                            <asp:BoundField DataField="BuyerFirstName" HeaderText="First Name" />
@@ -407,6 +449,18 @@ table.dataTable thead th {
                            <asp:BoundField DataField="PurchaseDate" HeaderText="Date" />
                            <asp:BoundField DataField="TicketCount" HeaderText="Tickets" />
                            <asp:BoundField DataField="OrderSettlement" HeaderText="Order Source" />
+                           <%-- Rolls up the per-ticket flag: ticked only when every
+                                ticket in the order is printed, dash when some are. --%>
+                           <asp:TemplateField HeaderText="Printed">
+                               <ItemTemplate>
+                                   <input type="checkbox" class="tk-printed-order"
+                                          onclick="onOrderPrintedToggle(this); event.stopPropagation();"
+                                          data-order='<%# Eval("GroupOrderID") %>'
+                                          data-total='<%# Eval("TicketCount") %>'
+                                          data-printed='<%# Eval("PrintedCount") %>'
+                                          <%# If(Convert.ToInt32(Eval("TicketCount")) > 0 AndAlso Convert.ToInt32(Eval("PrintedCount")) = Convert.ToInt32(Eval("TicketCount")), "checked=""checked""", "") %> />
+                               </ItemTemplate>
+                           </asp:TemplateField>
                        </Columns>
                    </asp:GridView>
                </div><%-- end pane-orders --%>
@@ -487,28 +541,63 @@ table.dataTable thead th {
 
 
 
+    // Table handles, shared with the printed-tick helpers below.
+    var gv1Table = null;
+    var gvOrdersTable = null;
+
+    // Initialises DataTables (the search box and column sorting) defensively.
+    //
+    // A GridView that binds to zero rows used to render without a <thead>,
+    // which made DataTables throw and silently kill every later statement in
+    // $(document).ready - search, sort, the order-row filter and the sidebar
+    // menu all disappeared at once. The grids now set ShowHeaderWhenEmpty, and
+    // this guard means a problem with one table can never take out the other.
+    function initGrid(id, options) {
+        var $t = $('#' + id);
+        if (!$t.length) { return null; }
+        if ($t.find('thead th').length === 0) {
+            if (window.console) { console.warn(id + ': no <thead>, skipping DataTables init'); }
+            return null;
+        }
+        try {
+            return $t.DataTable(options);
+        } catch (e) {
+            if (window.console) { console.error(id + ': DataTables init failed', e); }
+            return null;
+        }
+    }
+
     $(document).ready(function () {
-        var gv1Table = $('#GridView1').DataTable({
+        gv1Table = initGrid('GridView1', {
             order: [[0, 'desc']],
-            paging: true
+            paging: true,
+            stateSave: true
         });
 
-        $('#gvOrders').DataTable({
+        gvOrdersTable = initGrid('gvOrders', {
             order: [[3, 'desc']],
-            paging: false
+            paging: false,
+            stateSave: true
         });
 
         $(document).on('click', '#gvOrders tbody tr', function () {
             var orderID = $(this).find('td').eq(0).text().trim();
-            if (orderID) {
+            if (orderID && gv1Table) {
                 gv1Table.search(orderID).draw();
                 $('#tab-season').tab('show');
             }
         });
 
         $('a[href="#pane-season"]').on('shown.bs.tab', function () {
-            gv1Table.columns.adjust().draw(false);
+            if (gv1Table) { gv1Table.columns.adjust().draw(false); }
         });
+
+        $('a[href="#pane-orders"]').on('shown.bs.tab', function () {
+            if (gvOrdersTable) { gvOrdersTable.columns.adjust().draw(false); }
+        });
+
+        // Reflect the initial part-printed orders as an indeterminate box.
+        refreshAllOrderCheckboxes();
 
         $("#sidebar").mCustomScrollbar({
             theme: "minimal"
@@ -532,6 +621,138 @@ table.dataTable thead th {
 
 
     });
+
+    /* ==============================================================
+       Printed ticks.
+
+       The flag is stored per ticket, keyed on TicketCoRef, in its own
+       ticket_print_status table (see Files/ticket_print_status.sql).
+       The Card Orders tab shows a roll-up: ticked only when every
+       ticket in the order is printed, indeterminate when some are.
+
+       Saving goes through page WebMethods over AJAX rather than a
+       postback, so ticking a box never resets the search box, the sort
+       order or the current page.
+       ============================================================== */
+
+    // All ticket checkboxes, including rows DataTables has paged out of view.
+    function allTicketBoxes() {
+        if (gv1Table) {
+            return $(gv1Table.rows().nodes()).find('input.tk-printed');
+        }
+        return $('#GridView1 input.tk-printed');
+    }
+
+    function ticketBoxesForOrder(orderID) {
+        return allTicketBoxes().filter(function () {
+            return $(this).data('order') == orderID;
+        });
+    }
+
+    function orderBox(orderID) {
+        return $('#gvOrders input.tk-printed-order').filter(function () {
+            return $(this).data('order') == orderID;
+        });
+    }
+
+    // Sets one order's box from the state of its tickets.
+    function refreshOrderCheckbox(orderID) {
+        var $order = orderBox(orderID);
+        if (!$order.length) { return; }
+
+        var $tickets = ticketBoxesForOrder(orderID);
+        var total, printed;
+
+        if ($tickets.length) {
+            total = $tickets.length;
+            printed = $tickets.filter(':checked').length;
+        } else {
+            // Order has no matching rows in the season ticket grid; fall back
+            // to the counts the server calculated.
+            total = parseInt($order.attr('data-total'), 10) || 0;
+            printed = parseInt($order.attr('data-printed'), 10) || 0;
+        }
+
+        $order.prop('checked', total > 0 && printed === total);
+        $order.prop('indeterminate', printed > 0 && printed < total);
+        $order.attr('title', printed + ' of ' + total + ' printed');
+    }
+
+    function refreshAllOrderCheckboxes() {
+        $('#gvOrders input.tk-printed-order').each(function () {
+            refreshOrderCheckbox($(this).data('order'));
+        });
+    }
+
+    function savePrintedStatus(method, payload) {
+        return $.ajax({
+            type: 'POST',
+            url: '2026print-tickets.aspx/' + method,
+            data: JSON.stringify(payload),
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json'
+        });
+    }
+
+    // Ticket tick -> save, then roll the change up to the Card Orders tab.
+    function onTicketPrintedToggle(cb) {
+        var $cb = $(cb);
+        var wanted = cb.checked;
+        var ref = $cb.data('ref');
+        var orderID = $cb.data('order');
+
+        $cb.prop('disabled', true);
+        savePrintedStatus('SetTicketPrinted', { ticketCoRef: ref, printed: wanted })
+            .done(function () {
+                refreshOrderCheckbox(orderID);
+            })
+            .fail(function () {
+                $cb.prop('checked', !wanted);   // put it back - nothing was saved
+                alert('Could not save the printed status for ticket ' + ref + '.\n\n' +
+                      'The tick has been undone. Please try again.');
+            })
+            .always(function () {
+                $cb.prop('disabled', false);
+            });
+    }
+
+    // Order tick -> save, then apply to every ticket in that order.
+    function onOrderPrintedToggle(cb) {
+        var $cb = $(cb);
+        var wanted = cb.checked;
+        var orderID = $cb.data('order');
+        var $tickets = ticketBoxesForOrder(orderID);
+        var previous = $tickets.map(function () { return this.checked; }).get();
+
+        $cb.prop('indeterminate', false).prop('disabled', true);
+        $tickets.prop('checked', wanted);
+
+        savePrintedStatus('SetOrderPrinted', { groupOrderID: orderID, printed: wanted })
+            .done(function () {
+                refreshOrderCheckbox(orderID);
+            })
+            .fail(function () {
+                $cb.prop('checked', !wanted);
+                $tickets.each(function (i) { this.checked = previous[i]; });
+                refreshOrderCheckbox(orderID);
+                alert('Could not save the printed status for order ' + orderID + '.\n\n' +
+                      'The tick has been undone. Please try again.');
+            })
+            .always(function () {
+                $cb.prop('disabled', false);
+            });
+    }
+
+    // Called after a card is sent to the printer.
+    function markTicketPrinted(ticketCoRef) {
+        var $cb = allTicketBoxes().filter(function () {
+            return $(this).data('ref') == ticketCoRef;
+        });
+        if (!$cb.length || $cb.prop('checked')) { return; }
+
+        $cb.prop('checked', true);
+        onTicketPrintedToggle($cb[0]);
+    }
 
     function GetSelectedRow(lnk) {
 
@@ -802,6 +1023,10 @@ table.dataTable thead th {
 
         pdfMake.createPdf(dd).open(); //opens preview
                     //pdfMake.createPdf(dd).print(); //goes straight to print
+
+        // Tick the Printed box for this ticket (and roll it up to the
+        // Card Orders tab). Still manually un-tickable for reprints.
+        markTicketPrinted(ticketid);
 
                     //*********************************
 
